@@ -26,7 +26,7 @@ service cloud.firestore {
         && request.resource.data.code == get(/databases/$(database)/documents/secret/club).data.code;
       allow read, update, delete: if false;
     }
-    match /players/{id} {
+    match /teams/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
@@ -40,11 +40,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/joins/$(uid))
         && request.resource.data.total == 0
         && request.resource.data.byJ.size() == 0
-        && request.resource.data.roster.size() == 0;
-      // Cada mánager solo toca su plantilla y el nombre de su equipo; los puntos solo los escribe el admin.
+        && request.resource.data.roster.size() == 0
+        && request.resource.data.ageOk == true;
+      // Cada mánager solo toca su plantilla, capitán, porra y nombre de equipo; los puntos solo los escribe el admin.
       allow update: if isAdmin() || (
         request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roster', 'chg', 'done', 'teamName'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roster', 'captain', 'chg', 'done', 'preds', 'teamName'])
         && request.resource.data.roster.size() <= 10
         && (mercadoAbierto() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamName']))
       );
