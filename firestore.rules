@@ -1,0 +1,54 @@
+rules_version = '2';
+// SuperManager CBJ — reglas de seguridad de Firestore.
+// Admins: crear a mano en la consola un documento vacío admins/{uid} con el UID de tu cuenta.
+// Código del club: documento secret/club con el campo code (en MAYÚSCULAS). Nadie puede leerlo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function mercadoAbierto() { return get(/databases/$(database)/documents/config/game).data.mercado == 'open'; }
+
+    match /config/{doc} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /secret/{doc} {
+      allow read: if false;
+      allow write: if isAdmin();
+    }
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // Registro: solo si el código coincide con secret/club.
+    match /joins/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.code == get(/databases/$(database)/documents/secret/club).data.code;
+      allow read, update, delete: if false;
+    }
+    match /players/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /jornadas/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /managers/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/joins/$(uid))
+        && request.resource.data.total == 0
+        && request.resource.data.byJ.size() == 0
+        && request.resource.data.roster.size() == 0;
+      // Cada mánager solo toca su plantilla y el nombre de su equipo; los puntos solo los escribe el admin.
+      allow update: if isAdmin() || (
+        request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roster', 'chg', 'done', 'teamName'])
+        && request.resource.data.roster.size() <= 10
+        && (mercadoAbierto() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamName']))
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

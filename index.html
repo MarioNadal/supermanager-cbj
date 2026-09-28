@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070f1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SuperManager CBJ">
+<title>SuperManager CBJ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens (idénticos a Kortline v3) ── */
+:root{
+  --navy:#0d2244;--navy2:#1a3a6b;--orange:#F06318;--orange2:#B83808;
+  --orangeG:linear-gradient(135deg,#F06318,#B83808);
+  --bg:#070f1e;--s:#0c1828;--s2:#111f34;--s3:#1a3050;--border:#1d3654;
+  --tx:#eef2ff;--td:#7a9cc8;--tm:#3a5a80;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;--gray:#6b7280;--sky:#38bdf8;
+  --font-d:'Barlow Condensed',system-ui,sans-serif;--font-b:'DM Sans',system-ui,sans-serif;
+  --r:12px;color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{background:var(--bg);}
+body{font-family:var(--font-b);background:var(--bg);color:var(--tx);min-height:100vh;min-height:100dvh;background-image:radial-gradient(rgba(29,54,84,0.22) 1px,transparent 1px);background-size:24px 24px;overflow-x:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;}
+input,select,textarea{-webkit-user-select:text;user-select:text;}
+button{font-family:inherit;}
+#root{max-width:430px;margin:0 auto;position:relative;overflow-x:hidden;}
+/* ── Header ── */
+.header{padding:13px 16px;background:rgba(6,12,24,0.92);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding-top:calc(14px + env(safe-area-inset-top));}
+.hrow{display:flex;align-items:center;gap:10px;}
+.htitle{font-family:var(--font-d);font-weight:900;font-size:24px;letter-spacing:.5px;line-height:1;text-transform:uppercase;}
+.hsub{font-size:11px;color:var(--td);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;}
+.hlogo{width:36px;height:36px;border-radius:9px;flex-shrink:0;}
+.bbtn{background:var(--s2);border:1px solid var(--border);color:var(--tx);min-width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0 10px;font-weight:700;}
+/* ── Nav ── */
+.nav{display:flex;background:rgba(10,20,38,0.95);border-top:1px solid var(--border);position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding-bottom:env(safe-area-inset-bottom);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 10px;border:none;background:transparent;color:var(--tm);cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.nb.on{color:var(--orange);}
+.nb .ni{font-size:20px;line-height:1.2;}
+.content{padding:14px 16px 90px;padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+/* ── Tipografía / cajas ── */
+.sval{font-family:var(--font-d);font-weight:900;font-size:38px;color:var(--orange);line-height:1;}
+.slbl{font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;}
+.sbox{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
+.card{background:var(--s);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;}
+.sec{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--td);margin:18px 2px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.accent{height:4px;background:var(--orangeG);}
+.muted{color:var(--td);}
+.tiny{font-size:11px;color:var(--td);}
+.d{font-family:var(--font-d);font-weight:900;}
+.up{color:var(--green);}.down{color:var(--red);}
+.stars{color:#fbbf24;letter-spacing:1px;white-space:nowrap;}.stars .off{color:var(--s3);}
+.mvp{background:linear-gradient(135deg,#fbbf24,#d97706);color:#1a1200;font-weight:900;font-size:10px;padding:2px 6px;border-radius:5px;letter-spacing:.5px;}
+/* ── Botones / formularios (Kortline) ── */
+.btn-p{width:100%;padding:13px;border:none;border-radius:9px;font-weight:800;font-size:15px;cursor:pointer;background:var(--orangeG);color:white;margin-top:4px;transition:opacity .15s;}
+.btn-p:disabled{opacity:.4;cursor:not-allowed;}
+.btn-s{width:100%;padding:13px;border:1px solid var(--border);border-radius:9px;font-weight:700;font-size:15px;cursor:pointer;background:var(--s2);color:var(--td);margin-top:8px;}
+.btn-d{width:100%;padding:13px;border:1px solid rgba(239,68,68,.4);border-radius:9px;font-weight:700;font-size:15px;cursor:pointer;background:rgba(239,68,68,.1);color:var(--red);margin-top:8px;}
+.btn-sm{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;border:none;cursor:pointer;background:var(--orangeG);color:#fff;white-space:nowrap;}
+.btn-sm.ghost{background:var(--s2);border:1px solid var(--border);color:var(--td);}
+.btn-sm:disabled{opacity:.35;cursor:not-allowed;}
+.fg{margin-bottom:13px;}
+.fl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--td);margin-bottom:5px;display:block;}
+.fi{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;color:var(--tx);font-size:16px;outline:none;font-family:var(--font-b);min-height:44px;}
+.fi:focus{border-color:var(--orange);}
+.fi option{background:#0c1828;}
+.frow{display:flex;gap:10px;}.frow>.fg{flex:1;min-width:0;}
+.pnum{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:900;font-size:16px;flex-shrink:0;color:white;}
+/* ── Chips / segmentado ── */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{padding:7px 12px;border-radius:20px;border:1px solid var(--border);background:var(--s2);color:var(--td);font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;}
+.chip.on{background:rgba(240,99,24,.15);border-color:var(--orange);color:var(--orange);}
+.seg{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px;}
+.seg button{flex:1;border:none;background:transparent;color:var(--td);font-weight:800;font-size:13px;padding:9px 6px;border-radius:8px;cursor:pointer;}
+.seg button.on{background:var(--orangeG);color:#fff;}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;}
+.pill.g{background:rgba(34,197,94,.14);color:var(--green);}
+.pill.a{background:rgba(245,158,11,.14);color:var(--amber);}
+.pill.o{background:rgba(240,99,24,.15);color:var(--orange);}
+.pill.n{background:var(--s3);color:var(--td);}
+.tag{font-size:10px;font-weight:800;letter-spacing:.8px;padding:2px 6px;border-radius:5px;}
+/* ── Filas ── */
+.row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.row:last-child{border-bottom:none;}
+.row:active{background:var(--s2);}
+.row.me{background:rgba(240,99,24,.08);box-shadow:inset 3px 0 0 var(--orange);}
+.rmain{flex:1;min-width:0;}
+.rname{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rsub{font-size:11px;color:var(--td);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.rnum{text-align:right;flex-shrink:0;}
+.rnum .v{font-family:var(--font-d);font-weight:900;font-size:19px;line-height:1;}
+.rnum .l{font-size:10px;color:var(--td);font-weight:700;margin-top:2px;}
+.rank{width:26px;text-align:center;font-family:var(--font-d);font-weight:900;font-size:18px;color:var(--td);flex-shrink:0;}
+.rank.r1{color:#fbbf24;}.rank.r2{color:#cbd5e1;}.rank.r3{color:#d97706;}
+/* ── Hero ── */
+.hero{padding:16px;}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.hero-name{font-family:var(--font-d);font-weight:900;font-size:26px;line-height:1.05;text-transform:uppercase;letter-spacing:.3px;}
+.grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px;}
+.kv .k{font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;letter-spacing:1.2px;}
+.kv .v{font-family:var(--font-d);font-weight:800;font-size:21px;margin-top:3px;}
+.banner{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:10px;border:1px solid;}
+.banner.g{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#bbf7d0;}
+.banner.a{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3);color:#fde68a;}
+.banner.o{background:rgba(240,99,24,.08);border-color:rgba(240,99,24,.3);color:#fed7aa;}
+.banner b{color:var(--tx);}
+/* ── Pista ── */
+.court{position:relative;width:100%;aspect-ratio:100/108;background:linear-gradient(180deg,#0f2038,#0b1830);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.court svg.lines{position:absolute;inset:0;width:100%;height:100%;}
+.slot{position:absolute;transform:translate(-50%,-50%);width:27%;max-width:112px;border-radius:11px;cursor:pointer;text-align:center;}
+.slot.full{background:rgba(12,24,40,.94);border:1px solid var(--border);padding:8px 5px 7px;box-shadow:0 6px 18px rgba(0,0,0,.35);}
+.slot.full:active{transform:translate(-50%,-50%) scale(.96);}
+.slot.empty{border:1.5px dashed rgba(240,99,24,.55);background:rgba(240,99,24,.06);padding:14px 4px;color:var(--orange);font-weight:800;font-size:12px;}
+.slot .pnum{margin:0 auto 5px;width:30px;height:30px;font-size:15px;}
+.slot .sn{font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slot .sp{font-size:10.5px;color:var(--td);margin-top:2px;}
+.slot .spts{position:absolute;top:-8px;right:-6px;background:var(--orangeG);color:#fff;font-family:var(--font-d);font-weight:900;font-size:13px;padding:1px 7px;border-radius:10px;}
+.slot .splus{font-size:22px;line-height:1;margin-bottom:3px;}
+/* ── Barras ── */
+.bars{display:flex;align-items:flex-end;gap:6px;height:90px;padding:6px 2px 0;}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+.bar .b{width:100%;max-width:30px;border-radius:5px 5px 2px 2px;background:var(--orangeG);min-height:3px;}
+.bar .b.neg{background:var(--red);}
+.bar .b.nj{background:var(--s3);}
+.bar .bv{font-size:10px;font-weight:800;margin-bottom:3px;font-family:var(--font-d);}
+.bar .bl{font-size:9.5px;color:var(--td);margin-top:4px;font-weight:700;}
+/* ── Modales (Kortline) ── */
+.ov{position:fixed;inset:0;background:rgba(3,8,18,.72);z-index:9999;animation:fade .2s ease;}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{background:var(--s);border-radius:20px 20px 0 0;border-top:1px solid var(--border);position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;z-index:10000;animation:up .28s ease;overscroll-behavior:none;}
+@keyframes up{from{transform:translateX(-50%) translateY(100%)}to{transform:translateX(-50%) translateY(0)}}
+.mhandle{width:34px;height:4px;background:var(--s3);border-radius:2px;margin:-6px auto 14px;}
+.mtitle{font-family:var(--font-d);font-weight:900;font-size:22px;margin-bottom:4px;letter-spacing:.5px;}
+.msub{font-size:13px;color:var(--td);margin-bottom:14px;line-height:1.5;}
+.ov.top{z-index:99998}.modal.top{z-index:99999}
+/* ── Toast ── */
+.toast{position:fixed;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--border);color:var(--tx);padding:11px 16px;border-radius:10px;font-weight:700;font-size:13px;z-index:100000;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:90vw;animation:fade .2s;}
+.toast.err{border-color:rgba(239,68,68,.5);}
+/* ── Login ── */
+.auth{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 20px calc(28px + env(safe-area-inset-bottom));}
+.auth-logo{width:78px;height:78px;border-radius:20px;margin:0 auto 14px;display:block;box-shadow:0 10px 36px rgba(240,99,24,.35);}
+.auth-t{font-family:var(--font-d);font-weight:900;font-size:38px;text-align:center;line-height:1;letter-spacing:.5px;}
+.auth-t span{color:var(--orange);}
+.auth-s{text-align:center;color:var(--td);font-size:13px;margin:8px 0 22px;}
+.pin{letter-spacing:10px;font-family:var(--font-d);font-weight:800;font-size:22px;text-align:center;}
+.demo{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.3);color:#bae6fd;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:14px;}
+/* ── Admin ── */
+.arow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);}
+.arow:last-child{border-bottom:none;}
+.vin{width:74px;text-align:center;font-family:var(--font-d);font-weight:800;font-size:18px;padding:8px 6px;min-height:40px;}
+.tgl{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;}
+.tgl .box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.tgl.on .box{background:var(--orangeG);border-color:var(--orange);color:#fff;}
+.empty{padding:26px 16px;text-align:center;color:var(--td);font-size:13px;line-height:1.6;}
+.center{text-align:center;}
+.mt8{margin-top:8px}.mt12{margin-top:12px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="mroot"></div>
+
+<!-- Firebase (solo se usa si FIREBASE_CONFIG está relleno) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════════
+   SUPERMANAGER CBJ — fantasy del Club Baloncesto Jaca
+   Reglas inspiradas en el SuperManager acb, simplificadas para el club.
+   ════════════════════════════════════════════════════════════════ */
+const APP_VERSION = "0.1.0";
+
+// ⚙️ Pega aquí la configuración del proyecto Firebase NUEVO (Consola → Configuración del proyecto → Tus apps → Web).
+// Mientras sea null, la app funciona en MODO DEMO con datos ficticios guardados solo en este navegador.
+const FIREBASE_CONFIG = null;
+
+const DEMO = !FIREBASE_CONFIG || typeof firebase === "undefined";
+const TEAMS = {
+  SM:{label:"Senior Masculino",short:"SEN M",color:"#F06318",bg:"rgba(240,99,24,.15)"},
+  SF:{label:"Senior Femenino",short:"SEN F",color:"#38bdf8",bg:"rgba(56,189,248,.15)"}
+};
+const POS = {B:{l:"Base",pl:"Bases"},A:{l:"Alero",pl:"Aleros"},P:{l:"Pívot",pl:"Pívots"}};
+const POS_ORDER = ["B","A","P"];
+const DEFAULT_CFG = {season:"2026-27",jornada:0,mercado:"open",estrellas:10,cambios:2,
+  slots:{B:1,A:2,P:2},mvpBonus:5,
+  // Multiplicador según la diferencia final del partido (nosotros − rival). Se aplica a valoraciones positivas.
+  margen:[{min:15,mult:1.3},{min:6,mult:1.2},{min:1,mult:1.1},{min:-5,mult:1.0},{min:-14,mult:0.95},{min:-999,mult:0.9}]};
+
+/* ── Utilidades ── */
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o ?? null));
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const slug = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const r1 = n => Math.round(n*10)/10;
+const fmt1 = n => (Number.isInteger(n)? String(n) : r1(n).toFixed(1)).replace(".",",");
+const starsTxt = n => "★".repeat(Math.max(0,n||0));
+function starsHtml(n,size){ n=n||1; return `<span class="stars" style="${size?"font-size:"+size+"px":""}">${"★".repeat(n)}<span class="off">${"★".repeat(Math.max(0,3-n))}</span></span>`; }
+function marginMult(diff){ if(typeof diff!=="number"||!isFinite(diff)) return 1; for(const t of S.cfg.margen) if(diff>=t.min) return t.mult; return 1; }
+function marginLabel(i){
+  const T=S.cfg.margen, lo=T[i].min, hi=i===0?Infinity:T[i-1].min-1;
+  if(lo>=1) return hi===Infinity?`Gana de ${lo} o más`:`Gana de ${lo} a ${hi}`;
+  if(hi<=-1) return lo<=-999?`Pierde de ${-hi} o más`:`Pierde de ${-hi} a ${-lo}`;
+  return lo===0?"Empate":`Empata o pierde de 1 a ${-lo}`;
+}
+const pctTxt = m => { const p=Math.round((m-1)*100); return p===0?"±0%":(p>0?"+":"−")+Math.abs(p)+"%"; };
+const shortName = n => { const p=String(n||"").trim().split(/\s+/); return p.length>1 ? p[0][0]+". "+p.slice(1).join(" ") : p[0]||""; };
+const totalSlots = () => POS_ORDER.reduce((a,k)=>a+(S.cfg.slots[k]||0),0);
+function toast(msg,err){ const t=document.createElement("div"); t.className="toast"+(err?" err":""); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+
+/* ════════════════════════════════════════════════════════════════
+   CAPA DE DATOS — misma interfaz para demo (localStorage) y Firebase
+   ════════════════════════════════════════════════════════════════ */
+function newManagerDoc(name,teamName,cfg){
+  return {name:name.trim(),teamName:(teamName||"").trim()||("Equipo de "+name.trim()),roster:[],
+          chg:{j:0,used:0},done:false,total:0,byJ:{},createdAt:Date.now()};
+}
+
+function makeLocalDB(){
+  const KEY="smcbj:demo:v1";
+  let store=null; try{store=JSON.parse(localStorage.getItem(KEY)||"null");}catch(e){}
+  const fresh=!store;
+  if(!store) store={players:{},managers:{},jornadas:{},config:{},users:{}};
+  let uid=null; try{uid=localStorage.getItem(KEY+":uid");}catch(e){}
+  const L={}; let authCb=null;
+  const persist=()=>{ try{localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(KEY+":uid",uid||"");}catch(e){} };
+  const list=col=>Object.entries(store[col]||{}).map(([id,d])=>Object.assign(clone(d),{id}));
+  const emit=col=>(L[col]||[]).forEach(cb=>cb(list(col)));
+  const api={
+    demo:true, fresh,
+    listen(col,cb){ (L[col]=L[col]||[]).push(cb); cb(list(col)); return ()=>{L[col]=L[col].filter(x=>x!==cb);}; },
+    async batch(ops){
+      ops.forEach(o=>{ store[o.col]=store[o.col]||{};
+        if(o.op==="del") delete store[o.col][o.id];
+        else store[o.col][o.id]= o.merge ? Object.assign(store[o.col][o.id]||{},clone(o.data)) : clone(o.data); });
+      persist(); [...new Set(ops.map(o=>o.col))].forEach(emit);
+    },
+    newId:()=> "p"+Math.random().toString(36).slice(2,10),
+    reset(){ try{localStorage.removeItem(KEY);localStorage.removeItem(KEY+":uid");}catch(e){} location.reload(); },
+    auth:{
+      onChange(cb){ authCb=cb; cb(uid&&store.managers[uid]?{uid,admin:true}:null); },
+      async register({name,pin,code,teamName},cfg){
+        if(String(code).trim().toUpperCase()!=="DEMO") throw new Error("Código del club incorrecto (en la demo es DEMO)");
+        const k=slug(name); if(!k) throw new Error("Escribe tu nombre");
+        if(store.users[k]) throw new Error("Ese nombre ya está registrado. Entra con tu PIN.");
+        const id="u"+Math.random().toString(36).slice(2,10);
+        store.users[k]={uid:id,pin};
+        store.managers[id]=newManagerDoc(name,teamName,cfg);
+        uid=id; persist(); emit("managers"); authCb&&authCb({uid,admin:true});
+      },
+      async login({name,pin}){
+        const u=store.users[slug(name)];
+        if(!u||u.pin!==pin) throw new Error("Nombre o PIN incorrectos");
+        uid=u.uid; persist(); authCb&&authCb({uid,admin:true});
+      },
+      async logout(){ uid=null; persist(); authCb&&authCb(null); }
+    }
+  };
+  return api;
+}
+
+function makeFirebaseDB(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const fs=firebase.firestore(), au=firebase.auth();
+  const email=name=>slug(name)+"@supermanager-cbj.app";
+  const pw=pin=>"cbjsm-"+pin;
+  const api={
+    demo:false,
+    listen(col,cb){
+      const onErr=e=>{console.warn(col,e); toast("Error de conexión ("+col+")",true);};
+      if(col==="config") return fs.collection("config").doc("game").onSnapshot(d=>cb(d.exists?[Object.assign(d.data(),{id:"game"})]:[]),onErr);
+      return fs.collection(col).onSnapshot(s=>cb(s.docs.map(d=>Object.assign(d.data(),{id:d.id}))),onErr);
+    },
+    async batch(ops){
+      for(let i=0;i<ops.length;i+=450){
+        const b=fs.batch();
+        ops.slice(i,i+450).forEach(o=>{ const r=fs.collection(o.col).doc(o.id);
+          if(o.op==="del") b.delete(r); else b.set(r,o.data,o.merge?{merge:true}:{}); });
+        await b.commit();
+      }
+    },
+    newId:()=>fs.collection("players").doc().id,
+    setClubCode:code=>fs.collection("secret").doc("club").set({code:String(code).trim().toUpperCase()}),
+    auth:{
+      onChange(cb){ au.onAuthStateChanged(async u=>{ if(!u) return cb(null);
+        let admin=false; try{ admin=(await fs.collection("admins").doc(u.uid).get()).exists; }catch(e){}
+        cb({uid:u.uid,admin}); }); },
+      async register({name,pin,code,teamName},cfg){
+        if(!slug(name)) throw new Error("Escribe tu nombre");
+        let cred;
+        try{ cred=await au.createUserWithEmailAndPassword(email(name),pw(pin)); }
+        catch(e){ throw new Error(e.code==="auth/email-already-in-use"?"Ese nombre ya está registrado. Entra con tu PIN.":"No se pudo crear la cuenta ("+(e.code||e.message)+")"); }
+        const uid=cred.user.uid;
+        try{ await fs.collection("joins").doc(uid).set({code:String(code).trim().toUpperCase(),at:Date.now()}); }
+        catch(e){ await cred.user.delete().catch(()=>{}); throw new Error("Código del club incorrecto"); }
+        await fs.collection("managers").doc(uid).set(newManagerDoc(name,teamName,cfg));
+      },
+      async login({name,pin}){
+        try{ await au.signInWithEmailAndPassword(email(name),pw(pin)); }
+        catch(e){ throw new Error("Nombre o PIN incorrectos"); }
+      },
+      logout:()=>au.signOut()
+    }
+  };
+  return api;
+}
+
+const DB = DEMO ? makeLocalDB() : makeFirebaseDB();
+
+/* ════════════════════════════════════════════════════════════════
+   ESTADO
+   ════════════════════════════════════════════════════════════════ */
+const S = {
+  ready:{config:false,players:false,managers:false,jornadas:false},
+  cfg:clone(DEFAULT_CFG), players:{}, managers:{}, jornadas:{},
+  user:null, tab:"equipo",
+  mkt:{pos:"all",team:"all",sort:"media",q:""},
+  cls:{mode:"general",j:null},
+  adm:{sec:"jornada",draft:null},
+  authTab:"login"
+};
+const me = () => S.user && S.managers[S.user.uid];
+const isAdmin = () => !!(S.user && S.user.admin);
+const jOpen = () => (S.cfg.jornada||0)+1;
+const published = () => Object.values(S.jornadas).filter(j=>j.status==="published").sort((a,b)=>a.n-b.n);
+const lastPub = () => { const p=published(); return p[p.length-1]||null; };
+
+let unsubs=[];
+function stopListeners(){ unsubs.forEach(u=>u&&u()); unsubs=[]; Object.keys(S.ready).forEach(k=>S.ready[k]=false); }
+function startListeners(){
+  stopListeners();
+  const map=(arr)=>Object.fromEntries(arr.map(d=>[d.id,d]));
+  unsubs.push(DB.listen("config",arr=>{ const g=arr.find(d=>d.id==="game"); S.cfg=Object.assign(clone(DEFAULT_CFG),g||{}); S.ready.config=true; render(); }));
+  unsubs.push(DB.listen("players",arr=>{ S.players=map(arr); S.ready.players=true; render(); }));
+  unsubs.push(DB.listen("managers",arr=>{ S.managers=map(arr); S.ready.managers=true; render(); }));
+  unsubs.push(DB.listen("jornadas",arr=>{ S.jornadas=map(arr); S.ready.jornadas=true; render(); }));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LÓGICA DE JUEGO
+   ════════════════════════════════════════════════════════════════ */
+function playerStats(p){
+  const vals=Object.entries(p.vals||{}).filter(([,v])=>typeof v==="number");
+  const pts=p.pts||{};
+  const n=vals.length;
+  const media = n? vals.reduce((a,[,v])=>a+v,0)/n : 0;
+  const lp=lastPub();
+  const last = lp && typeof pts[lp.n]==="number" ? pts[lp.n] : null;
+  const totalPts = Object.values(pts).reduce((a,v)=>a+(typeof v==="number"?v:0),0);
+  const mvps = Object.values(S.jornadas).filter(j=>j.status==="published"&&j.mvp&&Object.values(j.mvp).includes(p.id)).length;
+  return {n,media,last,totalPts,mvps};
+}
+function ownersPct(pid){
+  const ms=Object.values(S.managers); if(!ms.length) return 0;
+  return ms.filter(m=>(m.roster||[]).includes(pid)).length/ms.length;
+}
+function rosterCount(roster,pos){ return (roster||[]).filter(id=>S.players[id]&&S.players[id].pos===pos).length; }
+function rosterStars(roster){ return (roster||[]).reduce((a,id)=>a+(S.players[id]?.stars||0),0); }
+const starsLeft = m => S.cfg.estrellas - rosterStars(m.roster);
+function changesInfo(m){
+  if(!m.done || (S.cfg.jornada||0)===0) return {unlimited:true,left:Infinity};
+  const used = (m.chg && m.chg.j===jOpen()) ? m.chg.used : 0;
+  return {unlimited:false,left:Math.max(0,S.cfg.cambios-used),used};
+}
+function buyCheck(pid){
+  const m=me(), p=S.players[pid];
+  if(!m||!p) return {ok:false,r:""};
+  if((m.roster||[]).includes(pid)) return {ok:false,r:"Ya está en tu equipo",owned:true};
+  if(S.cfg.mercado!=="open") return {ok:false,r:"Mercado cerrado"};
+  if(p.active===false) return {ok:false,r:"Jugador retirado del juego"};
+  if(rosterCount(m.roster,p.pos) >= (S.cfg.slots[p.pos]||0)) return {ok:false,r:"Ya tienes todos los "+POS[p.pos].pl.toLowerCase()};
+  if(starsLeft(m) < p.stars) return {ok:false,r:"Te "+(starsLeft(m)===1?"queda 1 estrella":"quedan "+Math.max(0,starsLeft(m))+" estrellas")+" y cuesta "+p.stars};
+  const ch=changesInfo(m); if(!ch.unlimited && ch.left<=0) return {ok:false,r:"Sin cambios esta jornada"};
+  return {ok:true};
+}
+async function buy(pid){
+  const c=buyCheck(pid); if(!c.ok){ toast(c.r,true); return; }
+  const m=me(), p=S.players[pid];
+  const roster=[...(m.roster||[]),pid];
+  const patch={roster};
+  const ch=changesInfo(m);
+  if(!ch.unlimited) patch.chg={j:jOpen(),used:(ch.used||0)+1};
+  if(!m.done && roster.length>=totalSlots()) patch.done=true;
+  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:patch,merge:true}]);
+  closeModal(); toast("✅ "+p.name+" fichado ("+starsTxt(p.stars)+")");
+}
+async function sell(pid){
+  const m=me(), p=S.players[pid];
+  if(S.cfg.mercado!=="open"){ toast("Mercado cerrado",true); return; }
+  const ch=changesInfo(m);
+  const warn = ch.unlimited ? "" : `<br><br>Vender es gratis, pero fichar al sustituto gasta 1 cambio (te quedan <b>${ch.left}</b> esta jornada).`;
+  confirmModal("Vender a "+esc(p.name),`Liberas <b>${p.stars} ${p.stars===1?"estrella":"estrellas"}</b>.${warn}`,"Vender",async()=>{
+    await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{roster:(m.roster||[]).filter(x=>x!==pid)},merge:true}]);
+    closeModal(); toast("💸 "+p.name+" vendido");
+  });
+}
+
+/* ── Admin: ciclo de jornada ── */
+function closeMarketOps(){
+  const J=jOpen();
+  const lineups={}; Object.entries(S.managers).forEach(([uid,m])=>{ lineups[uid]=[...(m.roster||[])]; });
+  const prev=S.jornadas[String(J)]||{};
+  return [
+    {op:"set",col:"jornadas",id:String(J),data:{n:J,status:"closed",lineups,stats:prev.stats||{},results:prev.results||{},mvp:prev.mvp||{},closedAt:Date.now()}},
+    {op:"set",col:"config",id:"game",data:{mercado:"closed"},merge:true}
+  ];
+}
+function reopenMarketOps(){
+  const J=jOpen(); const jd=S.jornadas[String(J)];
+  const ops=[{op:"set",col:"config",id:"game",data:{mercado:"open"},merge:true}];
+  if(jd) ops.push({op:"set",col:"jornadas",id:String(J),data:{status:"open",lineups:{}},merge:true});
+  return ops;
+}
+function teamDiff(results,t){ const r=results&&results[t]; return r&&typeof r.us==="number"&&typeof r.them==="number" ? r.us-r.them : null; }
+function calcPts(v,team,pid,results,mvp){
+  const mult=marginMult(teamDiff(results,team));
+  let pt = v>0 ? v*mult : v;
+  if(mvp && mvp[team]===pid) pt += S.cfg.mvpBonus;
+  return r1(pt);
+}
+function publishOps(J,stats,results,mvp){
+  const jd=S.jornadas[String(J)]||{};
+  const pts={};
+  Object.entries(stats).forEach(([pid,v])=>{
+    const p=S.players[pid]; if(!p||typeof v!=="number") return;
+    pts[pid]=calcPts(v,p.team,pid,results,mvp);
+  });
+  const ops=[];
+  Object.values(S.players).forEach(p=>{
+    const vals=Object.assign({},p.vals||{}), pp=Object.assign({},p.pts||{});
+    if(typeof stats[p.id]==="number"){ vals[J]=stats[p.id]; pp[J]=pts[p.id]; }
+    const d=Object.assign({},p); delete d.id;
+    d.vals=vals; d.pts=pp;
+    ops.push({op:"set",col:"players",id:p.id,data:d});
+  });
+  const lineups=jd.lineups||{}; const mPts={};
+  Object.entries(lineups).forEach(([uid,ids])=>{
+    const m=S.managers[uid]; if(!m) return;
+    const s=r1(ids.reduce((a,id)=>a+(pts[id]||0),0)); mPts[uid]=s;
+    const byJ=Object.assign({},m.byJ||{}); byJ[J]=s;
+    const total=r1(Object.values(byJ).reduce((a,v)=>a+v,0));
+    ops.push({op:"set",col:"managers",id:uid,data:{byJ,total},merge:true});
+  });
+  ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign({},jd,{n:J,status:"published",stats,results,mvp,pts,mPts,publishedAt:Date.now(),lineups})});
+  ops.push({op:"set",col:"config",id:"game",data:{jornada:J,mercado:"open"},merge:true});
+  return ops;
+}
+function undoPublishOps(){
+  const J=S.cfg.jornada, jd=S.jornadas[String(J)];
+  if(!jd||jd.status!=="published") return null;
+  const ops=[];
+  Object.values(S.players).forEach(p=>{
+    const d=Object.assign({},p); delete d.id;
+    d.vals=Object.assign({},p.vals||{}); delete d.vals[J];
+    d.pts=Object.assign({},p.pts||{}); delete d.pts[J];
+    ops.push({op:"set",col:"players",id:p.id,data:d});
+  });
+  Object.entries(S.managers).forEach(([uid,m])=>{
+    if(!m.byJ||m.byJ[J]==null) return;
+    const d=Object.assign({},m); delete d.id;
+    d.byJ=Object.assign({},m.byJ); delete d.byJ[J];
+    d.total=r1(Object.values(d.byJ).reduce((a,v)=>a+v,0));
+    ops.push({op:"set",col:"managers",id:uid,data:d});
+  });
+  const nj=Object.assign({},jd,{status:"closed"}); delete nj.id; delete nj.pts; delete nj.mPts; delete nj.publishedAt;
+  ops.push({op:"set",col:"jornadas",id:String(J),data:nj});
+  ops.push({op:"set",col:"config",id:"game",data:{jornada:J-1,mercado:"closed"},merge:true});
+  return ops;
+}
+
+/* ── Rankings ── */
+function ranking(j){
+  const arr=Object.entries(S.managers).map(([uid,m])=>({uid,m,pts: j? (m.byJ||{})[j] : (m.total||0)}))
+    .filter(x=> j? typeof x.pts==="number" : true);
+  arr.sort((a,b)=>(b.pts||0)-(a.pts||0) || a.m.name.localeCompare(b.m.name));
+  let lastPts=null,lastRank=0;
+  arr.forEach((x,i)=>{ if(x.pts!==lastPts){lastRank=i+1;lastPts=x.pts;} x.rank=lastRank; });
+  return arr;
+}
+function idealLineup(jd){
+  const out=[];
+  POS_ORDER.forEach(pos=>{
+    const cands=Object.entries(jd.pts||{}).filter(([pid])=>S.players[pid]&&S.players[pid].pos===pos).sort((a,b)=>b[1]-a[1]);
+    cands.slice(0,S.cfg.slots[pos]||0).forEach(([pid,pt])=>out.push({pid,pt}));
+  });
+  return out;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   UI · COMPONENTES
+   ════════════════════════════════════════════════════════════════ */
+function pnum(p,size){
+  const t=TEAMS[p.team]||TEAMS.SM;
+  const st=size?`width:${size}px;height:${size}px;font-size:${Math.round(size*.47)}px;`:"";
+  return `<div class="pnum" style="background:${t.color};${st}">${esc(p.dorsal??"")}</div>`;
+}
+const teamTag = p => { const t=TEAMS[p.team]||TEAMS.SM; return `<span class="tag" style="background:${t.bg};color:${t.color}">${t.short}</span>`; };
+const posTag = p => `<span class="tag" style="background:var(--s3);color:var(--td)">${POS[p.pos]?.l||""}</span>`;
+function header(title,sub,right){
+  return `<header class="header"><div class="hrow">
+    <img class="hlogo" src="assets/logo.svg" alt="">
+    <div style="flex:1;min-width:0"><div class="htitle">${title}</div>${sub?`<div class="hsub">${sub}</div>`:""}</div>
+    ${right||""}</div></header>`;
+}
+function navBar(){
+  const it=[["equipo","🏀","Equipo"],["mercado","💰","Mercado"],["clasif","🏆","Clasif."],["jornadas","📅","Jornadas"]];
+  if(isAdmin()) it.push(["admin","⚙️","Admin"]);
+  return `<nav class="nav">${it.map(([k,i,l])=>`<button class="nb ${S.tab===k?"on":""}" onclick="go('${k}')"><span class="ni">${i}</span><span>${l}</span></button>`).join("")}</nav>`;
+}
+function marketBanner(){
+  if(S.cfg.mercado==="open"){
+    return `<div class="banner g">🟢 <div><b>Mercado abierto</b> · preparando la jornada ${jOpen()}</div></div>`;
+  }
+  return `<div class="banner a">🔒 <div><b>Mercado cerrado</b> · se está jugando la jornada ${jOpen()}. Tu alineación ya está fijada.</div></div>`;
+}
+function courtSvg(){
+  const c="rgba(122,156,200,.22)";
+  return `<svg class="lines" viewBox="0 0 100 108" preserveAspectRatio="none" fill="none" stroke="${c}" stroke-width=".6">
+    <rect x="2" y="2" width="96" height="104" rx="2"/>
+    <rect x="34" y="2" width="32" height="38" fill="rgba(240,99,24,.05)"/>
+    <circle cx="50" cy="40" r="11"/>
+    <path d="M7 2 V16 A44 44 0 0 0 93 16 V2"/>
+    <line x1="44" y1="6" x2="56" y2="6" stroke="rgba(238,242,255,.35)" stroke-width="1"/>
+    <circle cx="50" cy="9" r="2.6" stroke="rgba(240,99,24,.8)" stroke-width=".9"/>
+    <path d="M36 106 A14 14 0 0 1 64 106"/>
+  </svg>`;
+}
+function courtHtml(ids,ptsMap,interactive){
+  const rows={P:17,A:48,B:79};
+  const spread=n=> n===1?[50]: n===2?[25,75]: n===3?[17,50,83]: Array.from({length:n},(_,i)=>10+i*(80/(n-1)));
+  let html="";
+  POS_ORDER.forEach(pos=>{
+    const n=S.cfg.slots[pos]||0; const xs=spread(n);
+    const mine=ids.filter(id=>S.players[id]&&S.players[id].pos===pos);
+    for(let i=0;i<n;i++){
+      const x=xs[i], y=rows[pos]+((pos==="A"&&n===2)?4:0);
+      const pid=mine[i];
+      if(pid){
+        const p=S.players[pid]; const pt=ptsMap?ptsMap[pid]:undefined;
+        html+=`<div class="slot full" style="left:${x}%;top:${y}%" onclick="openPlayer('${pid}')">
+          ${ptsMap? `<div class="spts">${typeof pt==="number"?fmt1(pt):"NJ"}</div>`:""}
+          ${pnum(p)}<div class="sn">${esc(shortName(p.name))}</div>
+          <div class="sp">${starsHtml(p.stars)}</div></div>`;
+      } else {
+        html+= interactive
+          ? `<div class="slot empty" style="left:${x}%;top:${y}%" onclick="goMarket('${pos}')"><div class="splus">＋</div>Fichar ${POS[pos].l.toLowerCase()}</div>`
+          : `<div class="slot empty" style="left:${x}%;top:${y}%;cursor:default;color:var(--tm);border-color:var(--border)">—</div>`;
+      }
+    }
+  });
+  return `<div class="court">${courtSvg()}${html}</div>`;
+}
+function barsHtml(entries){
+  if(!entries.length) return `<div class="tiny" style="padding:8px 2px">Todavía no hay jornadas publicadas.</div>`;
+  const max=Math.max(1,...entries.map(e=>Math.abs(e.v??0)));
+  return `<div class="bars">${entries.map(e=>{
+    const nj=e.v==null; const h=nj?4:Math.max(4,Math.abs(e.v)/max*62);
+    return `<div class="bar"><div class="bv">${nj?"NJ":fmt1(e.v)}</div><div class="b ${nj?"nj":e.v<0?"neg":""}" style="height:${h}px"></div><div class="bl">${e.l}</div></div>`;
+  }).join("")}</div>`;
+}
+
+/* ── Modales ── */
+function openModal(html,top){
+  const lvl=top?" top":"";
+  const w=document.createElement("div");
+  w.innerHTML=`<div class="ov${lvl}" onclick="closeModal(${top?1:0})"></div><div class="modal${lvl}"><div class="mhandle"></div>${html}</div>`;
+  w.dataset.top=top?"1":"0";
+  $("mroot").appendChild(w);
+}
+function closeModal(top){
+  const ws=[...$("mroot").children];
+  if(top){ const t=ws.filter(w=>w.dataset.top==="1").pop(); t&&t.remove(); }
+  else $("mroot").innerHTML="";
+}
+function confirmModal(title,msg,ok,fn,danger){
+  window.__cf=fn;
+  openModal(`<div class="mtitle">${title}</div><div class="msub">${msg}</div>
+    <button class="${danger?"btn-d":"btn-p"}" onclick="closeModal(1);window.__cf()">${ok}</button>
+    <button class="btn-s" onclick="closeModal(1)">Cancelar</button>`,true);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PANTALLAS
+   ════════════════════════════════════════════════════════════════ */
+function go(tab){ S.tab=tab; closeModal(); render(); window.scrollTo(0,0); }
+function goMarket(pos){ S.mkt.pos=pos||"all"; go("mercado"); }
+
+function render(){
+  const root=$("root");
+  if(!S.user){ root.innerHTML=authScreen(); return; }
+  if(!Object.values(S.ready).every(Boolean)){ root.innerHTML=`<div class="empty" style="padding-top:40vh">Cargando…</div>`; return; }
+  if(!me()){ root.innerHTML=`<div class="auth"><div class="empty">No se encuentra tu equipo.<br><button class="btn-s" onclick="DB.auth.logout()">Salir</button></div></div>`; return; }
+  const scr={equipo:equipoScreen,mercado:mercadoScreen,clasif:clasifScreen,jornadas:jornadasScreen,admin:adminScreen}[S.tab]||equipoScreen;
+  // conservar foco del buscador del mercado
+  root.innerHTML=scr()+navBar();
+  if(S.tab==="mercado") renderMarketList();
+}
+
+/* ── Login / registro ── */
+function authScreen(){
+  const reg=S.authTab==="reg";
+  return `<div class="auth">
+    <img class="auth-logo" src="assets/logo.svg" alt="">
+    <div class="auth-t">SUPER<span>MANAGER</span></div>
+    <div class="auth-s">Club Baloncesto Jaca · Temporada ${esc(S.cfg.season)}</div>
+    ${DEMO?`<div class="demo">🧪 <b>Modo demo</b>: datos ficticios guardados solo en este navegador. Código del club: <b>DEMO</b>. En la demo todos los usuarios son admin.</div>`:""}
+    <div class="seg" style="margin-bottom:16px">
+      <button class="${!reg?"on":""}" onclick="S.authTab='login';render()">Entrar</button>
+      <button class="${reg?"on":""}" onclick="S.authTab='reg';render()">Crear mi equipo</button>
+    </div>
+    <div class="fg"><label class="fl">Tu nombre y apellido</label><input class="fi" id="a_name" autocomplete="username" placeholder="Ej. Laura Pérez"></div>
+    ${reg?`<div class="fg"><label class="fl">Nombre de tu equipo</label><input class="fi" id="a_team" maxlength="28" placeholder="Ej. Los del Rapitán"></div>`:""}
+    <div class="frow">
+      <div class="fg"><label class="fl">PIN (4 cifras)</label><input class="fi pin" id="a_pin" inputmode="numeric" maxlength="4" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="••••"></div>
+      ${reg?`<div class="fg"><label class="fl">Código del club</label><input class="fi" id="a_code" autocapitalize="characters" placeholder="${DEMO?"DEMO":"Te lo da el club"}"></div>`:""}
+    </div>
+    ${reg?`<div class="tiny" style="margin:-4px 0 12px;line-height:1.5">Apúntate el PIN: lo necesitarás para entrar desde otro móvil.</div>`:""}
+    <button class="btn-p" id="a_btn" onclick="doAuth()">${reg?"Crear equipo y empezar":"Entrar"}</button>
+    <div class="tiny center" style="margin-top:18px">v${APP_VERSION}</div>
+  </div>`;
+}
+async function doAuth(){
+  const reg=S.authTab==="reg";
+  const name=$("a_name").value.trim(), pin=$("a_pin").value.trim();
+  if(name.length<3) return toast("Escribe tu nombre y apellido",true);
+  if(!/^\d{4}$/.test(pin)) return toast("El PIN son 4 cifras",true);
+  const btn=$("a_btn"); btn.disabled=true;
+  try{
+    if(reg) await DB.auth.register({name,pin,code:$("a_code").value,teamName:$("a_team").value},S.cfg);
+    else await DB.auth.login({name,pin});
+  }catch(e){ toast(e.message,true); btn.disabled=false; }
+}
+
+/* ── Mi equipo ── */
+function equipoScreen(){
+  const m=me(); const roster=m.roster||[];
+  const rk=ranking(); const my=rk.find(x=>x.uid===S.user.uid);
+  const ch=changesInfo(m); const lp=lastPub();
+  const closed=S.cfg.mercado!=="open";
+  const shown = closed && S.jornadas[String(jOpen())]?.lineups?.[S.user.uid] || roster;
+  const missing=totalSlots()-roster.length;
+  const pub=published();
+  const entries=pub.slice(-8).map(j=>({l:"J"+j.n,v:(m.byJ||{})[j.n]??null}));
+  return header("Mi equipo",`Jornada ${closed?jOpen()+" en juego":jOpen()} · ${esc(S.cfg.season)}`,
+      `<button class="bbtn" onclick="openProfile()" title="Perfil">👤</button>`)+
+  `<div class="content">
+    ${marketBanner()}
+    <div class="card"><div class="accent"></div><div class="hero">
+      <div class="hero-top">
+        <div style="min-width:0"><div class="hero-name">${esc(m.teamName)}</div><div class="tiny" style="margin-top:4px">${esc(m.name)}</div></div>
+        <div style="text-align:right"><div class="sval">${fmt1(m.total||0)}</div><div class="slbl">puntos</div></div>
+      </div>
+      <div class="grid4">
+        <div class="sbox kv"><div class="k">Posición</div><div class="v">${my?my.rank+"º":"—"} <span class="tiny">de ${rk.length}</span></div></div>
+        <div class="sbox kv"><div class="k">Estrellas libres</div><div class="v"><span style="color:#fbbf24">★</span> ${starsLeft(m)} <span class="tiny">de ${S.cfg.estrellas}</span></div></div>
+        <div class="sbox kv"><div class="k">Última jornada</div><div class="v">${lp&&typeof (m.byJ||{})[lp.n]==="number"?fmt1(m.byJ[lp.n])+" <span class='tiny'>pts</span>":"—"}</div></div>
+        <div class="sbox kv"><div class="k">Cambios</div><div class="v">${ch.unlimited?"Libres":ch.left+" <span class='tiny'>de "+S.cfg.cambios+"</span>"}</div></div>
+      </div>
+    </div></div>
+    ${missing>0&&!closed?`<div class="banner o">⚠️ <div>Te ${missing===1?"falta <b>1 jugador</b>":"faltan <b>"+missing+" jugadores</b>"}. Los huecos vacíos puntúan 0.</div></div>`:""}
+    <div class="sec"><span>${closed?"Alineación fijada · J"+jOpen():"Tu quinteto"}</span><span class="muted" style="letter-spacing:0;text-transform:none;font-weight:600">${roster.length}/${totalSlots()}</span></div>
+    ${courtHtml(shown,null,!closed)}
+    <div class="sec"><span>Puntos por jornada</span>${lp?`<span class="pill o">Última: ${fmt1((m.byJ||{})[lp.n]??0)}</span>`:""}</div>
+    <div class="card" style="padding:10px 12px">${barsHtml(entries)}</div>
+  </div>`;
+}
+function openProfile(){
+  const m=me();
+  openModal(`<div class="mtitle">Tu perfil</div><div class="msub">${esc(m.name)}${isAdmin()?" · <span class='pill o'>Admin</span>":""}</div>
+    <div class="fg"><label class="fl">Nombre del equipo</label><input class="fi" id="pf_team" maxlength="28" value="${esc(m.teamName)}"></div>
+    <button class="btn-p" onclick="saveProfile()">Guardar</button>
+    <button class="btn-s" onclick="openRules()">📖 Reglas del juego</button>
+    <button class="btn-s" onclick="closeModal();DB.auth.logout()">Cerrar sesión</button>
+    ${DEMO?`<button class="btn-d" onclick="DB.reset()">Reiniciar datos de la demo</button>`:""}
+    <div class="tiny center mt12">SuperManager CBJ v${APP_VERSION}</div>`);
+}
+async function saveProfile(){
+  const v=$("pf_team").value.trim(); if(!v) return toast("Pon un nombre",true);
+  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{teamName:v},merge:true}]);
+  closeModal(); toast("Guardado");
+}
+function openRules(){
+  const c=S.cfg, sl=POS_ORDER.map(k=>c.slots[k]+" "+(c.slots[k]===1?POS[k].l.toLowerCase():POS[k].pl.toLowerCase())).join(", ");
+  openModal(`<div class="mtitle">Reglas</div><div class="msub" style="font-size:14px;color:var(--tx);line-height:1.65">
+    <b>Plantilla:</b> ${totalSlots()} jugadores (${sl}) de los equipos senior del CBJ.<br>
+    <b>Estrellas:</b> cada jugador vale de ★ a ★★★ según su nivel. Tienes <b>${c.estrellas} ★</b> para toda la plantilla. El club revisa las estrellas durante la temporada; si a uno de los tuyos le suben, te lo quedas igualmente.<br>
+    <b>Puntos:</b> la valoración de cada jugador en su partido (si no juega, 0), multiplicada según cómo quedó su equipo:<br>
+    ${c.margen.map((t,i)=>`&nbsp;&nbsp;· ${marginLabel(i)}: <b>${pctTxt(t.mult)}</b>`).join("<br>")}<br>
+    <b>Jugador del partido:</b> el entrenador elige uno por partido, que suma <b>+${c.mvpBonus}</b>.<br>
+    <b>Mercado:</b> se cierra antes de los partidos del fin de semana y tu plantilla queda fijada. Se reabre al publicar la jornada.<br>
+    <b>Cambios:</b> hasta el cierre de la 1ª jornada son libres. Después, ${c.cambios} fichajes por jornada (vender no cuenta).<br>
+  </div><button class="btn-s" onclick="closeModal(1)">Cerrar</button>`,true);
+}
+
+/* ── Ficha de jugador ── */
+function openPlayer(pid){
+  const p=S.players[pid]; if(!p) return;
+  const st=playerStats(p); const m=me();
+  const owned=(m.roster||[]).includes(pid);
+  const pub=published();
+  const entries=pub.slice(-8).map(j=>({l:"J"+j.n,v:(p.pts||{})[j.n]??null}));
+  let action="";
+  if(owned){
+    action = S.cfg.mercado==="open" ? `<button class="btn-d" onclick="sell('${pid}')">Vender (liberas ${p.stars} ★)</button>` : `<div class="banner a mt12">🔒 Mercado cerrado: no se puede vender ahora.</div>`;
+  } else {
+    const c=buyCheck(pid);
+    action = `<button class="btn-p" ${c.ok?"":"disabled"} onclick="buy('${pid}')">Fichar · ${starsTxt(p.stars)}</button>${c.ok?"":`<div class="tiny center mt8">${esc(c.r)}</div>`}`;
+  }
+  openModal(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+      ${pnum(p,48)}
+      <div style="min-width:0"><div class="mtitle" style="margin:0">${esc(p.name)}</div>
+      <div class="rsub" style="margin-top:4px">${teamTag(p)} ${posTag(p)} ${p.active===false?'<span class="pill n">Retirado</span>':""}</div></div>
+    </div>
+    <div class="grid4" style="margin-top:0">
+      <div class="sbox kv"><div class="k">Nivel</div><div class="v">${starsHtml(p.stars,20)}</div></div>
+      <div class="sbox kv"><div class="k">Media val.</div><div class="v">${st.n?fmt1(r1(st.media)):"—"}</div></div>
+      <div class="sbox kv"><div class="k">Puntos totales</div><div class="v">${fmt1(r1(st.totalPts))} <span class="tiny">${st.n} PJ</span></div></div>
+      <div class="sbox kv"><div class="k">Jugador del partido</div><div class="v">${st.mvps} <span class="tiny">veces · ${Math.round(ownersPct(pid)*100)}% lo tienen</span></div></div>
+    </div>
+    <div class="sec">Puntos por jornada</div>
+    <div class="card" style="padding:10px 12px">${barsHtml(entries)}</div>
+    ${action}<button class="btn-s" onclick="closeModal()">Cerrar</button>`);
+}
+
+/* ── Mercado ── */
+function mercadoScreen(){
+  const m=me(); const f=S.mkt;
+  const chip=(k,v,l)=>`<button class="chip ${f[k]===v?"on":""}" onclick="S.mkt.${k}='${v}';render()">${l}</button>`;
+  const ch=changesInfo(m);
+  return header("Mercado",`${starsLeft(m)} ★ libres · ${ch.unlimited?"cambios libres":ch.left+" cambio"+(ch.left===1?"":"s")+" disponibles"}`)+
+  `<div class="content">
+    ${marketBanner()}
+    <input class="fi" id="mk_q" placeholder="🔎 Buscar jugador" value="${esc(f.q)}" oninput="S.mkt.q=this.value;renderMarketList()" style="margin-bottom:10px">
+    <div class="chips" style="margin-bottom:8px">${chip("pos","all","Todos")}${POS_ORDER.map(k=>chip("pos",k,POS[k].pl+" "+rosterCount(m.roster,k)+"/"+S.cfg.slots[k])).join("")}</div>
+    <div class="chips" style="margin-bottom:12px">${chip("team","all","Todos los equipos")}${Object.keys(TEAMS).map(k=>chip("team",k,TEAMS[k].label)).join("")}</div>
+    <div class="sec" style="margin-top:4px"><span id="mk_count"></span>
+      <select class="fi" style="width:auto;min-height:34px;padding:6px 10px;font-size:13px" onchange="S.mkt.sort=this.value;renderMarketList()">
+        ${[["media","Media"],["stars","Estrellas"],["last","Última jornada"],["mvp","Jugador del partido"],["own","% mánagers"]].map(([v,l])=>`<option value="${v}" ${f.sort===v?"selected":""}>${l}</option>`).join("")}
+      </select></div>
+    <div class="card" id="mlist"></div>
+  </div>`;
+}
+function renderMarketList(){
+  const box=$("mlist"); if(!box) return;
+  const f=S.mkt, q=slug(f.q), m=me();
+  let arr=Object.values(S.players).filter(p=>p.active!==false)
+    .filter(p=>f.pos==="all"||p.pos===f.pos).filter(p=>f.team==="all"||p.team===f.team)
+    .filter(p=>!q||slug(p.name).includes(q));
+  const st=Object.fromEntries(arr.map(p=>[p.id,playerStats(p)]));
+  const key={stars:p=>p.stars,media:p=>st[p.id].media,last:p=>st[p.id].last??-99,mvp:p=>st[p.id].mvps,own:p=>ownersPct(p.id)}[f.sort];
+  arr.sort((a,b)=>key(b)-key(a)||a.name.localeCompare(b.name));
+  $("mk_count").textContent=arr.length+" jugadores";
+  if(!arr.length){ box.innerHTML=`<div class="empty">${Object.keys(S.players).length?"Ningún jugador con esos filtros.":"Todavía no hay jugadores. El admin los da de alta."}</div>`; return; }
+  box.innerHTML=arr.map(p=>{
+    const s=st[p.id]; const owned=(m.roster||[]).includes(p.id); const c=owned?null:buyCheck(p.id);
+    const btn= owned? `<span class="pill o">En tu equipo</span>`
+      : `<button class="btn-sm" ${c.ok?"":"disabled"} onclick="event.stopPropagation();buy('${p.id}')">Fichar</button>`;
+    return `<div class="row" onclick="openPlayer('${p.id}')">
+      ${pnum(p)}
+      <div class="rmain"><div class="rname">${esc(p.name)}</div>
+        <div class="rsub">${teamTag(p)} ${posTag(p)} <span>Media ${s.n?fmt1(r1(s.media)):"—"}</span>${s.last!=null?`<span>· Últ. ${fmt1(s.last)}</span>`:""}</div></div>
+      <div class="rnum"><div class="v">${starsHtml(p.stars,15)}</div><div class="l">${Math.round(ownersPct(p.id)*100)}% lo tienen</div></div>
+      <div style="flex-shrink:0">${btn}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ── Clasificación ── */
+function clasifScreen(){
+  const pub=published(); const c=S.cls;
+  if(c.mode==="jornada"&&!c.j&&pub.length) c.j=pub[pub.length-1].n;
+  const j = c.mode==="jornada"? c.j : null;
+  const rk=ranking(j);
+  return header("Clasificación",`${Object.keys(S.managers).length} mánagers · ${pub.length} jornada${pub.length===1?"":"s"}`,
+    `<button class="bbtn" onclick="shareRanking()" title="Compartir">📤</button>`)+
+  `<div class="content">
+    <div class="seg" style="margin-bottom:12px">
+      <button class="${c.mode==="general"?"on":""}" onclick="S.cls.mode='general';render()">General</button>
+      <button class="${c.mode==="jornada"?"on":""}" onclick="S.cls.mode='jornada';render()">Por jornada</button>
+    </div>
+    ${c.mode==="jornada"? (pub.length?`<div class="chips" style="margin-bottom:12px">${pub.slice().reverse().map(x=>`<button class="chip ${c.j===x.n?"on":""}" onclick="S.cls.j=${x.n};render()">J${x.n}</button>`).join("")}</div>`:`<div class="empty">Aún no hay jornadas publicadas.</div>`):""}
+    ${(c.mode==="general"||pub.length)?`<div class="card">${rk.map(x=>`
+      <div class="row ${x.uid===S.user.uid?"me":""}" onclick="openManager('${x.uid}')">
+        <div class="rank ${x.rank<=3?"r"+x.rank:""}">${x.rank}</div>
+        <div class="rmain"><div class="rname">${esc(x.m.teamName)}</div><div class="rsub">${esc(x.m.name)}</div></div>
+        <div class="rnum"><div class="v">${fmt1(x.pts||0)}</div><div class="l">pts</div></div>
+      </div>`).join("")||`<div class="empty">Nadie en esta jornada.</div>`}</div>`:""}
+  </div>`;
+}
+function openManager(uid){
+  const m=S.managers[uid]; if(!m) return;
+  const lp=lastPub();
+  const closedJ = S.cfg.mercado!=="open" ? S.jornadas[String(jOpen())] : null;
+  let body="";
+  if(closedJ && closedJ.lineups && closedJ.lineups[uid]){
+    body=`<div class="sec">Alineación J${jOpen()} (en juego)</div>${courtHtml(closedJ.lineups[uid],null,false)}`;
+  } else if(lp && lp.lineups && lp.lineups[uid]){
+    body=`<div class="sec">Alineación J${lp.n} · ${fmt1((m.byJ||{})[lp.n]??0)} pts</div>${courtHtml(lp.lineups[uid],lp.pts||{},false)}`;
+  } else body=`<div class="empty">Su alineación se verá cuando cierre el mercado.</div>`;
+  const pub=published();
+  openModal(`<div class="mtitle">${esc(m.teamName)}</div><div class="msub">${esc(m.name)} · ${fmt1(m.total||0)} pts totales</div>
+    ${body}
+    <div class="sec">Puntos por jornada</div><div class="card" style="padding:10px 12px">${barsHtml(pub.slice(-8).map(j=>({l:"J"+j.n,v:(m.byJ||{})[j.n]??null})))}</div>
+    <button class="btn-s" onclick="closeModal()">Cerrar</button>`);
+}
+async function shareRanking(){
+  const rk=ranking().slice(0,15); const lp=lastPub();
+  const txt=`🏀 *SuperManager CBJ* · Clasificación${lp?" tras la J"+lp.n:""}\n\n`+
+    rk.map(x=>`${x.rank===1?"🥇":x.rank===2?"🥈":x.rank===3?"🥉":x.rank+"."} ${x.m.teamName} (${x.m.name}) — ${fmt1(x.pts||0)}`).join("\n");
+  try{ if(navigator.share){ await navigator.share({text:txt}); return; } }catch(e){ return; }
+  try{ await navigator.clipboard.writeText(txt); toast("📋 Copiado para WhatsApp"); }catch(e){ toast("No se pudo copiar",true); }
+}
+
+/* ── Jornadas ── */
+function jornadasScreen(){
+  const pub=published().slice().reverse(); const uid=S.user.uid;
+  const closed=S.cfg.mercado!=="open";
+  return header("Jornadas",`Temporada ${esc(S.cfg.season)}`)+
+  `<div class="content">
+    ${closed?`<div class="banner a">⏱️ <div><b>Jornada ${jOpen()} en juego.</b> Los puntos se publican cuando el club mete las valoraciones.</div></div>`:""}
+    ${pub.length?pub.map(j=>{
+      const rk=ranking(j.n); const mine=rk.find(x=>x.uid===uid);
+      const best=Object.entries(j.pts||{}).sort((a,b)=>b[1]-a[1])[0];
+      const bp=best&&S.players[best[0]];
+      const res=Object.keys(TEAMS).filter(k=>teamDiff(j.results,k)!==null).map(k=>{const d=teamDiff(j.results,k); return `<span class="${d>0?"up":d<0?"down":""}">${TEAMS[k].short} ${j.results[k].us}-${j.results[k].them}</span>`;});
+      return `<div class="card" onclick="openJornada(${j.n})" style="cursor:pointer"><div class="hero" style="padding:14px">
+        <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div>
+          <div class="tiny" style="margin-top:3px">${res.length?res.join(" · "):"Sin resultados"}</div></div>
+          <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${mine?fmt1(mine.pts):"—"}</div><div class="slbl">${mine?mine.rank+"º de "+rk.length:"no jugaste"}</div></div></div>
+        ${bp?`<div class="rsub" style="margin-top:10px">🔥 Mejor de la jornada: <b style="color:var(--tx)">${esc(bp.name)}</b> · ${fmt1(best[1])} pts</div>`:""}
+      </div></div>`;}).join("")
+    :`<div class="card"><div class="empty">Aún no hay jornadas publicadas.<br>Ficha tu quinteto antes de que cierre el mercado.</div></div>`}
+  </div>`;
+}
+function openJornada(n){
+  const j=S.jornadas[String(n)]; if(!j) return;
+  const ideal=idealLineup(j); const idealPts=r1(ideal.reduce((a,x)=>a+x.pt,0));
+  const top=Object.entries(j.pts||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const rk=ranking(n).slice(0,5);
+  openModal(`<div class="mtitle">Jornada ${n}</div><div class="msub">Quinteto ideal: <b style="color:var(--orange)">${fmt1(idealPts)} pts</b></div>
+    ${courtHtml(ideal.map(x=>x.pid),j.pts,false)}
+    <div class="sec">Top jugadores</div><div class="card">${top.map(([pid,pt],i)=>{const p=S.players[pid]; if(!p) return "";
+      const v=(j.stats||{})[pid];
+      return `<div class="row" onclick="closeModal();openPlayer('${pid}')"><div class="rank">${i+1}</div>${pnum(p)}<div class="rmain"><div class="rname">${esc(p.name)}</div><div class="rsub">${teamTag(p)} Val. ${fmt1(v)} · ${pctTxt(marginMult(teamDiff(j.results,p.team)))}${j.mvp&&j.mvp[p.team]===pid?' <span class="mvp">MVP +'+S.cfg.mvpBonus+'</span>':""}</div></div><div class="rnum"><div class="v">${fmt1(pt)}</div><div class="l">pts</div></div></div>`;}).join("")}</div>
+    <div class="sec">Mejores mánagers</div><div class="card">${rk.map(x=>`<div class="row ${x.uid===S.user.uid?"me":""}"><div class="rank ${x.rank<=3?"r"+x.rank:""}">${x.rank}</div><div class="rmain"><div class="rname">${esc(x.m.teamName)}</div><div class="rsub">${esc(x.m.name)}</div></div><div class="rnum"><div class="v">${fmt1(x.pts)}</div></div></div>`).join("")}</div>
+    <button class="btn-s" onclick="closeModal()">Cerrar</button>`);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADMIN
+   ════════════════════════════════════════════════════════════════ */
+function adminScreen(){
+  if(!isAdmin()) return header("Admin")+`<div class="content"><div class="empty">Sin permisos.</div></div>`;
+  const sec=S.adm.sec;
+  const tabs=[["jornada","Jornada"],["jugadores","Jugadores"],["usuarios","Mánagers"],["ajustes","Ajustes"]];
+  let body={jornada:admJornada,jugadores:admJugadores,usuarios:admUsuarios,ajustes:admAjustes}[sec]();
+  return header("Panel admin",DEMO?"Modo demo":"Solo visible para admins")+
+  `<div class="content"><div class="chips" style="margin-bottom:14px">${tabs.map(([k,l])=>`<button class="chip ${sec===k?"on":""}" onclick="S.adm.sec='${k}';render()">${l}</button>`).join("")}</div>${body}</div>`;
+}
+function admJornada(){
+  const J=jOpen(), open=S.cfg.mercado==="open";
+  const nMan=Object.keys(S.managers).length;
+  const incomplete=Object.values(S.managers).filter(m=>(m.roster||[]).length<totalSlots()).length;
+  const lp=lastPub();
+  if(open){
+    return `<div class="card"><div class="accent"></div><div class="hero">
+      <div class="hero-name" style="font-size:22px">Jornada ${J} · mercado abierto</div>
+      <div class="msub mt8" style="margin-bottom:10px">${nMan} mánagers · ${incomplete} con la plantilla incompleta.<br>Cierra el mercado antes del primer partido del fin de semana: las alineaciones quedan fijadas en ese momento.</div>
+      <button class="btn-p" onclick="admCloseMarket()">🔒 Cerrar mercado de la J${J}</button>
+      ${lp?`<button class="btn-s" onclick="admUndo()">↩️ Deshacer publicación de la J${lp.n}</button>`:""}
+    </div></div>`;
+  }
+  // mercado cerrado → meter valoraciones
+  const jd=S.jornadas[String(J)]||{};
+  if(!S.adm.draft||S.adm.draft.J!==J) S.adm.draft={J,stats:Object.assign({},jd.stats||{}),results:clone(jd.results||{}),mvp:Object.assign({},jd.mvp||{})};
+  const d=S.adm.draft;
+  const byTeam=Object.keys(TEAMS).map(t=>({t,ps:Object.values(S.players).filter(p=>p.team===t&&p.active!==false).sort((a,b)=>(+a.dorsal||0)-(+b.dorsal||0))}));
+  const filled=Object.values(d.stats).filter(v=>typeof v==="number").length;
+  return `<div class="banner a">🔒 <div><b>Mercado cerrado · J${J}</b>. ${Object.keys(jd.lineups||{}).length} alineaciones fijadas. Copia de Swish el marcador y la valoración de cada jugador (vacío = no jugó). Pulsa <b>MVP</b> en el Jugador del partido (+${S.cfg.mvpBonus}).</div></div>
+    ${byTeam.map(({t,ps})=>`<div class="sec">${TEAMS[t].label}</div><div class="card">
+      <div class="arow" style="background:var(--s2)"><div class="rmain"><div class="rname">Marcador final</div><div class="tiny" id="mm_${t}">${admMultTxt(t)}</div></div>
+        <input class="fi vin" inputmode="numeric" placeholder="CBJ" value="${d.results[t]?.us??""}" onchange="admRes('${t}','us',this.value)">
+        <span class="muted">–</span>
+        <input class="fi vin" inputmode="numeric" placeholder="Rival" value="${d.results[t]?.them??""}" onchange="admRes('${t}','them',this.value)"></div>
+      ${ps.map(p=>`<div class="arow">${pnum(p)}<div class="rmain"><div class="rname">${esc(p.name)}</div><div class="rsub">${POS[p.pos].l}</div></div>
+        <button class="btn-sm ${d.mvp[t]===p.id?"":"ghost"}" title="Jugador del partido" onclick="admMvp('${t}','${p.id}')">MVP</button>
+        <input class="fi vin" inputmode="decimal" placeholder="NJ" value="${typeof d.stats[p.id]==="number"?String(d.stats[p.id]).replace(".",","):""}" onchange="admVal('${p.id}',this.value)"></div>`).join("")||`<div class="empty">Sin jugadores.</div>`}
+    </div>`).join("")}
+    <div class="tiny" style="margin:10px 2px">${filled} jugadores con valoración.</div>
+    <button class="btn-s" onclick="admSaveDraft()">💾 Guardar borrador</button>
+    <button class="btn-p mt8" onclick="admPublish()">🚀 Publicar J${J} y reabrir mercado</button>
+    <button class="btn-s" onclick="admReopen()">Reabrir mercado sin publicar</button>`;
+}
+function admVal(pid,raw){
+  const v=String(raw).trim().replace(",",".");
+  if(v===""){ delete S.adm.draft.stats[pid]; return; }
+  const n=Number(v); if(!isFinite(n)||Math.abs(n)>150){ toast("Valoración no válida",true); return; }
+  S.adm.draft.stats[pid]=n;
+}
+function admMultTxt(t){ const d=teamDiff(S.adm.draft.results,t); return d===null?"Sin marcador: multiplicador ±0%":(d>0?"Gana de "+d:d<0?"Pierde de "+(-d):"Empate")+" → valoraciones "+pctTxt(marginMult(d)); }
+function admRes(t,k,raw){
+  const r=S.adm.draft.results[t]=S.adm.draft.results[t]||{};
+  const v=String(raw).trim(); if(v===""){ delete r[k]; } else { const n=parseInt(v,10); if(!(n>=0&&n<250)) return toast("Marcador no válido",true); r[k]=n; }
+  const el=$("mm_"+t); if(el) el.textContent=admMultTxt(t);
+}
+function admMvp(t,pid){
+  const d=S.adm.draft;
+  if(d.mvp[t]===pid){ delete d.mvp[t]; render(); return; }
+  if(typeof d.stats[pid]!=="number") return toast("Primero mete su valoración: el Jugador del partido tiene que haber jugado",true);
+  d.mvp[t]=pid; render();
+}
+async function admCloseMarket(){
+  const incomplete=Object.values(S.managers).filter(m=>(m.roster||[]).length<totalSlots()).length;
+  confirmModal("Cerrar mercado J"+jOpen(),`Se fijan las alineaciones de los ${Object.keys(S.managers).length} mánagers y nadie podrá fichar hasta que publiques la jornada.${incomplete?`<br><br>⚠️ ${incomplete} tienen la plantilla incompleta.`:""}`,"Cerrar mercado",async()=>{
+    await DB.batch(closeMarketOps()); toast("🔒 Mercado cerrado");
+  });
+}
+async function admSaveDraft(){
+  const d=S.adm.draft; await DB.batch([{op:"set",col:"jornadas",id:String(d.J),data:{stats:d.stats,results:d.results,mvp:d.mvp},merge:true}]); toast("💾 Borrador guardado");
+}
+async function admPublish(){
+  const d=S.adm.draft; const n=Object.keys(d.stats).length;
+  if(!n) return toast("Mete al menos una valoración",true);
+  const mv=Object.entries(d.mvp).find(([t,pid])=>typeof d.stats[pid]!=="number"); if(mv) return toast("El Jugador del partido de "+TEAMS[mv[0]].short+" no tiene valoración",true);
+  confirmModal("Publicar jornada "+d.J,`${n} jugadores con valoración. Se sumarán los puntos y se reabrirá el mercado.<br><br>Si te equivocas, puedes deshacerlo después.`,"Publicar",async()=>{
+    await DB.batch(publishOps(d.J,d.stats,d.results,d.mvp)); S.adm.draft=null; toast("🚀 Jornada "+d.J+" publicada");
+  });
+}
+function admReopen(){
+  confirmModal("Reabrir mercado","Se descartan las alineaciones fijadas (se volverán a fijar al cerrar de nuevo). El borrador de valoraciones se conserva.","Reabrir",async()=>{
+    await admSaveDraft(); await DB.batch(reopenMarketOps()); toast("Mercado reabierto");
+  });
+}
+function admUndo(){
+  const J=S.cfg.jornada;
+  confirmModal("Deshacer J"+J,"Se restan los puntos de esa jornada y el mercado vuelve a quedar cerrado con las alineaciones de entonces, para que corrijas las valoraciones y vuelvas a publicar.<br><br>⚠️ Los fichajes hechos desde la publicación se mantienen.","Deshacer",async()=>{
+    const ops=undoPublishOps(); if(!ops) return toast("Nada que deshacer",true);
+    await DB.batch(ops); S.adm.draft=null; toast("↩️ J"+J+" deshecha");
+  },true);
+}
+function admJugadores(){
+  const ps=Object.values(S.players).sort((a,b)=>a.team.localeCompare(b.team)||POS_ORDER.indexOf(a.pos)-POS_ORDER.indexOf(b.pos)||a.name.localeCompare(b.name));
+  const nSug=ps.filter(p=>{const sg=suggestStars(p); return sg&&sg!==p.stars;}).length;
+  return `<button class="btn-p" onclick="admPlayerModal()">＋ Añadir jugador</button>
+    ${nSug?`<button class="btn-s" onclick="admApplySuggest()">⭐ Revisar estrellas según rendimiento (${nSug} cambios)</button>`:""}
+    <div class="sec">${ps.length} jugadores</div>
+    <div class="card">${ps.map(p=>`<div class="row" onclick="admPlayerModal('${p.id}')">${pnum(p)}<div class="rmain"><div class="rname">${esc(p.name)}</div><div class="rsub">${teamTag(p)} ${posTag(p)} ${p.active===false?'<span class="pill n">Retirado</span>':""}</div></div><div class="rnum"><div class="v">${starsHtml(p.stars,15)}</div><div class="l">${(()=>{const sg=suggestStars(p); return sg&&sg!==p.stars?"sugerido "+starsTxt(sg):Math.round(ownersPct(p.id)*100)+"% lo tienen";})()}</div></div></div>`).join("")||`<div class="empty">Da de alta los jugadores senior.</div>`}</div>`;
+}
+function admPlayerModal(pid){
+  const p=pid?S.players[pid]:{name:"",team:"SM",pos:"A",dorsal:"",stars:2,active:true};
+  const sel=(id,opts,v)=>`<select class="fi" id="${id}">${opts.map(([k,l])=>`<option value="${k}" ${k===v?"selected":""}>${l}</option>`).join("")}</select>`;
+  openModal(`<div class="mtitle">${pid?"Editar jugador":"Nuevo jugador"}</div><div class="msub">${pid?"Puedes subir o bajar sus estrellas cuando quieras. Quien ya lo tenga, lo conserva.":"Las estrellas marcan su nivel de partida: ★ rol, ★★ importante, ★★★ referente."}</div>
+    <div class="fg"><label class="fl">Nombre y apellido</label><input class="fi" id="pp_name" value="${esc(p.name)}"></div>
+    <div class="frow"><div class="fg"><label class="fl">Equipo</label>${sel("pp_team",Object.keys(TEAMS).map(k=>[k,TEAMS[k].label]),p.team)}</div>
+      <div class="fg" style="max-width:90px"><label class="fl">Dorsal</label><input class="fi" id="pp_dorsal" inputmode="numeric" maxlength="2" value="${esc(p.dorsal)}"></div></div>
+    <div class="frow"><div class="fg"><label class="fl">Posición</label>${sel("pp_pos",POS_ORDER.map(k=>[k,POS[k].l]),p.pos)}</div>
+      <div class="fg"><label class="fl">Estrellas</label>${sel("pp_stars",[[1,"★ (1)"],[2,"★★ (2)"],[3,"★★★ (3)"]],p.stars)}</div></div>
+    ${pid?`<div class="tgl ${p.active===false?"":"on"}" id="pp_act" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:4px 0 14px"><div class="box">${p.active===false?"":"✓"}</div><div><b>Activo en el mercado</b><div class="tiny">Desactívalo si deja el equipo: nadie podrá ficharlo.</div></div></div>`:""}
+    <button class="btn-p" onclick="admSavePlayer(${pid?`'${pid}'`:"null"})">Guardar</button>
+    ${pid&&ownersPct(pid)===0&&!Object.keys(p.vals||{}).length?`<button class="btn-d" onclick="admDelPlayer('${pid}')">Eliminar</button>`:""}
+    <button class="btn-s" onclick="closeModal()">Cancelar</button>`);
+}
+async function admSavePlayer(pid){
+  const name=$("pp_name").value.trim(); const stars=Number($("pp_stars").value);
+  if(name.length<3) return toast("Nombre obligatorio",true);
+  const base=pid?Object.assign({},S.players[pid]):{vals:{},pts:{}};
+  delete base.id;
+  Object.assign(base,{name,team:$("pp_team").value,pos:$("pp_pos").value,dorsal:$("pp_dorsal").value.trim(),stars});
+  if(pid){ base.active=$("pp_act").classList.contains("on"); } else base.active=true;
+  await DB.batch([{op:"set",col:"players",id:pid||DB.newId(),data:base}]);
+  closeModal(); toast("Guardado");
+}
+function suggestStars(p){
+  // Terciles por valoración media entre los jugadores con ≥2 partidos. Solo una sugerencia: el admin decide.
+  const pool=Object.values(S.players).filter(x=>x.active!==false).map(x=>({id:x.id,...playerStats(x)})).filter(x=>x.n>=2).sort((a,b)=>a.media-b.media);
+  const i=pool.findIndex(x=>x.id===p.id); if(i<0||pool.length<6) return null;
+  const q=i/(pool.length-1); return q<1/3?1:q<2/3?2:3;
+}
+function admApplySuggest(){
+  const ch=Object.values(S.players).map(p=>({p,sg:suggestStars(p)})).filter(x=>x.sg&&x.sg!==x.p.stars);
+  confirmModal("Revisar estrellas",ch.map(x=>`${esc(x.p.name)}: ${starsTxt(x.p.stars)} → <b>${starsTxt(x.sg)}</b>`).join("<br>")+"<br><br>Quien ya los tenga fichados los conserva.","Aplicar",async()=>{
+    await DB.batch(ch.map(x=>({op:"set",col:"players",id:x.p.id,data:{stars:x.sg},merge:true}))); toast("⭐ Estrellas actualizadas");
+  });
+}
+function admDelPlayer(pid){
+  confirmModal("Eliminar jugador","Nadie lo tiene y no tiene valoraciones. Se borra del juego.","Eliminar",async()=>{ await DB.batch([{op:"del",col:"players",id:pid}]); closeModal(); toast("Eliminado"); },true);
+}
+function admUsuarios(){
+  const rk=ranking();
+  return `<div class="sec">${rk.length} mánagers registrados</div><div class="card">${rk.map(x=>`<div class="row"><div class="rank">${x.rank}</div><div class="rmain"><div class="rname">${esc(x.m.teamName)}</div><div class="rsub">${esc(x.m.name)} · ${(x.m.roster||[]).length}/${totalSlots()} jugadores · ${rosterStars(x.m.roster)}/${S.cfg.estrellas} ★</div></div><button class="btn-sm ghost" onclick="admDelManager('${x.uid}')">Quitar</button></div>`).join("")||`<div class="empty">Nadie todavía. Comparte el enlace y el código del club.</div>`}</div>`;
+}
+function admDelManager(uid){
+  const m=S.managers[uid];
+  confirmModal("Quitar a "+esc(m.name),"Se borra su equipo y sus puntos de la clasificación. No se puede deshacer.","Quitar",async()=>{ await DB.batch([{op:"del",col:"managers",id:uid}]); toast("Quitado"); },true);
+}
+function admAjustes(){
+  const c=S.cfg;
+  return `<div class="card" style="padding:16px">
+    <div class="frow"><div class="fg"><label class="fl">Temporada</label><input class="fi" id="cf_season" value="${esc(c.season)}"></div>
+      <div class="fg"><label class="fl">Estrellas por equipo</label><input class="fi" id="cf_est" inputmode="numeric" value="${c.estrellas}"></div></div>
+    <div class="frow">${POS_ORDER.map(k=>`<div class="fg"><label class="fl">${POS[k].pl}</label><input class="fi" id="cf_s${k}" inputmode="numeric" value="${c.slots[k]}"></div>`).join("")}</div>
+    <div class="frow"><div class="fg"><label class="fl">Cambios / jornada</label><input class="fi" id="cf_cam" inputmode="numeric" value="${c.cambios}"></div>
+      <div class="fg"><label class="fl">Jugador del partido (+pts)</label><input class="fi" id="cf_mvp" inputmode="numeric" value="${c.mvpBonus}"></div></div>
+    <div class="tiny" style="margin-bottom:10px;line-height:1.5">Si bajas las estrellas por equipo, nadie pierde jugadores, pero quien se pase no podrá fichar hasta vender. Cambiar la plantilla (bases/aleros/pívots) a mitad de temporada puede dejar equipos descuadrados.</div>
+    <button class="btn-p" onclick="admSaveCfg()">Guardar ajustes</button>
+    ${!DEMO?`<div class="fg mt12"><label class="fl">Código del club (para registrarse)</label><div class="frow"><input class="fi" id="cf_code" placeholder="Nuevo código"><button class="btn-sm" onclick="admSetCode()">Cambiar</button></div></div>`:""}
+  </div>`;
+}
+async function admSaveCfg(){
+  const n=id=>Number($(id).value);
+  const slots={B:n("cf_sB"),A:n("cf_sA"),P:n("cf_sP")};
+  if(Object.values(slots).some(v=>!Number.isInteger(v)||v<0||v>5)) return toast("Plantilla no válida",true);
+  const data={season:$("cf_season").value.trim()||S.cfg.season,estrellas:Math.round(n("cf_est")),slots,cambios:Math.max(0,Math.round(n("cf_cam"))),mvpBonus:n("cf_mvp")};
+  if(!(data.estrellas>=totalSlots()&&data.mvpBonus>=0)) return toast("Revisa los valores (mínimo 1 estrella por hueco)",true);
+  await DB.batch([{op:"set",col:"config",id:"game",data,merge:true}]); toast("Ajustes guardados");
+}
+async function admSetCode(){
+  const v=$("cf_code").value.trim(); if(v.length<4) return toast("Mínimo 4 caracteres",true);
+  try{ await DB.setClubCode(v); toast("Código cambiado"); $("cf_code").value=""; }catch(e){ toast("Error: "+e.message,true); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DATOS DE DEMO (ficticios)
+   ════════════════════════════════════════════════════════════════ */
+async function seedDemo(){
+  let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const SMn=["Álex Lacasa","Dani Sanz","Iker Bescós","Pablo Aznárez","Hugo Lanaspa","Marcos Villacampa","Javi Ipas","Rubén Gavín","Sergio Ara","Óscar Allué","Nacho Pardo","Víctor Castán","Luis Oliván","Adrián Ferrer"];
+  const SFn=["Lucía Latre","Marta Sarasa","Irene Bergua","Paula Gracia","Nerea Anadón","Sara Pueyo","Elena Mur","Carla Lafuente","Ainhoa Bosque","Claudia Borau","Julia Abad","Noa Cajal","Laura Otal","Inés Viñuales"];
+  const posOf=i=> i<3?"B": i<8?"A":"P";
+  const ops=[]; const ids=[];
+  [["SM",SMn],["SF",SFn]].forEach(([t,names])=>names.forEach((name,i)=>{
+    const skill=4+rnd()*14; const id=t.toLowerCase()+"_"+i; ids.push({id,skill,t,pos:posOf(i)});
+    const stars=skill>13?3:skill>8.5?2:1;
+    ops.push({op:"set",col:"players",id,data:{name,team:t,pos:posOf(i),dorsal:String([4,5,7,8,9,10,11,12,13,14,15,21,23,33][i]),stars,vals:{},pts:{},active:true}});
+  }));
+  ops.push({op:"set",col:"config",id:"game",data:clone(DEFAULT_CFG)});
+  const mans=[["Carmen Ruiz","Los del Rapitán"],["Jorge Marco","Canfranc Ballers"],["Pilar Mairal","Triple de Oroel"],["Fernando Cebollero","Peña Oroel BC"],["Ana Palacio","Ciudadela Squad"],["Raúl Estaún","Pirineo Tres"],["Beatriz Soler","Las del Pabellón"],["Diego Latas","Aragón Dunk"],["Silvia Coarasa","Mate Jacetano"],["Tomás Ubieto","Zona 2-3"],["Rocío Ferrer","Bocina Final"],["Andrés Orús","Tapón y Contra"]];
+  mans.forEach(([n,t],k)=>{
+    const pick=[]; let cash=DEFAULT_CFG.estrellas;
+    POS_ORDER.forEach(pos=>{ const pool=ids.filter(x=>x.pos===pos).sort(()=>rnd()-.5);
+      for(const x of pool){ if(pick.filter(y=>y.pos===pos).length>=DEFAULT_CFG.slots[pos]) break;
+        const pr=ops.find(o=>o.id===x.id).data.stars; if(pr<=cash-(5-pick.length-1)){ pick.push(x); cash-=pr; } } });
+    ops.push({op:"set",col:"managers",id:"demo_m"+k,data:Object.assign(newManagerDoc(n,t,DEFAULT_CFG),{roster:pick.map(x=>x.id),done:pick.length===5})});
+  });
+  await DB.batch(ops);
+  // 3 jornadas simuladas con la MISMA lógica que usa el admin
+  for(let J=1;J<=3;J++){
+    await DB.batch(closeMarketOps());
+    const stats={}; ids.forEach(x=>{ if(rnd()<0.88) stats[x.id]=Math.round(x.skill+(rnd()-.5)*12); });
+    const res={}, mvp={};
+    ["SM","SF"].forEach(t=>{ const us=55+Math.round(rnd()*35), them=50+Math.round(rnd()*35); res[t]={us,them};
+      const best=ids.filter(x=>x.t===t&&typeof stats[x.id]==="number").sort((a,b)=>stats[b.id]-stats[a.id])[Math.floor(rnd()*3)]; if(best) mvp[t]=best.id; });
+    await DB.batch(publishOps(J,stats,res,mvp));
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ARRANQUE
+   ════════════════════════════════════════════════════════════════ */
+(async function boot(){
+  // Demo: los datos son locales, se cargan desde el principio. Firebase: solo tras iniciar sesión (las reglas lo exigen).
+  if(DEMO){ startListeners(); if(DB.fresh) await seedDemo(); }
+  DB.auth.onChange(u=>{
+    const prev=S.user&&S.user.uid; S.user=u;
+    if(!DEMO){ if(u&&u.uid!==prev) startListeners(); if(!u) stopListeners(); }
+    if(u&&S.tab==="admin"&&!u.admin) S.tab="equipo";
+    closeModal(); render();
+  });
+  if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
