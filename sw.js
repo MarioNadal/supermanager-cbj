@@ -1,5 +1,5 @@
 // SuperManager CBJ — Service Worker: app shell en caché, datos siempre en red (Firebase).
-const CACHE_VERSION = "pcbj-0.3.0";
+const CACHE_VERSION = "pcbj-0.3.4";
 const SHELL = ["./", "index.html", "manifest.json", "assets/logo.svg", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => {

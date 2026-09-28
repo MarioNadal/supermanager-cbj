@@ -7,15 +7,13 @@ Cada semana el club publica los partidos del fin de semana, y cada cuenta pronos
 
 | Qué | Puntos |
 |---|---|
-| Quién gana | +3 |
-| Por cuánto (1-5 / 6-14 / 15+), además de acertar el ganador | +2 |
-| Marcador exacto (opcional) | +5 |
-| Marcador cerca (±3 puntos en los dos) | +2 |
+| Quién gana | +2 |
+| Por cuánto (1-5 / 6-14 / 15+), además de acertar el ganador | +3 |
 
 - **El partido de tu propio equipo no se pronostica: se anima.**
 - **Los pronósticos son privados.** Nadie ve qué ha dicho cada uno, solo los puntos. Al cerrar la jornada se muestran porcentajes globales ("el 70% dice que gana el CBJ").
 - Hay clasificación **general**, **por categoría** (según el equipo elegido al registrarse) y **por jornada**, con un **podio** que se comparte por WhatsApp.
-- **Insignias:** Pleno, Clavado, En racha, Fiel, Podio y Ojo de halcón.
+- **Insignias:** Pleno, Triple, En racha, Fiel, Podio y Ojo de halcón.
 - Sin dinero ni premios.
 
 ## Datos que se guardan

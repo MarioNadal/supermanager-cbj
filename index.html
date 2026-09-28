@@ -221,7 +221,7 @@ button{font-family:inherit;}
    · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
    · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.4";
 
 // ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
@@ -242,10 +242,10 @@ const CATS = {
 const CAT_ORDER = Object.keys(CATS);
 const GENDERS = {M:"Masculino",F:"Femenino",X:"Mixto"};
 const TRAMOS = {1:"1 a 5",2:"6 a 14",3:"15 o más"};
-const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:3,tramo:2,exacto:5,cerca:2}};
+const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:2,tramo:3},ptsV:3};
 const BADGES = [
   {k:"pleno",  ic:"🎯", t:"Pleno",        d:"Acierta el ganador de todos tus partidos de una jornada (mínimo 3)."},
-  {k:"clavado",ic:"🔒", t:"Clavado",      d:"Acierta un marcador exacto."},
+  {k:"triple", ic:"🏀", t:"Triple",       d:"Acierta ganador y diferencia en 3 partidos de la misma jornada."},
   {k:"racha",  ic:"🔥", t:"En racha",     d:"3 jornadas seguidas acertando al menos la mitad de ganadores."},
   {k:"fiel",   ic:"📅", t:"Fiel",         d:"Pronostica 5 jornadas."},
   {k:"podio",  ic:"🏆", t:"Podio",        d:"Queda entre los 3 primeros de una jornada."},
@@ -266,7 +266,7 @@ function toast(msg,err){ const t=document.createElement("div"); t.className="toa
    ════════════════════════════════════════════════════════════════ */
 function newUserDoc(nick,teamId){ return {name:nick.trim(),teamId:teamId||null,total:0,byJ:{},parentOk:true,createdAt:Date.now()}; }
 function makeLocalDB(){
-  const KEY="pcbj:demo:v3";
+  const KEY="pcbj:demo:v34";
   let store=null; try{store=JSON.parse(localStorage.getItem(KEY)||"null");}catch(e){}
   const fresh=!store;
   if(!store) store={teams:{},managers:{},jornadas:{},config:{},preds:{},predsLocked:{},users:{}};
@@ -321,7 +321,7 @@ function makeFirebaseDB(){
       if(col==="config") return fs.collection("config").doc("game").onSnapshot(d=>cb(d.exists?[Object.assign(d.data(),{id:"game"})]:[]),onErr(col));
       return fs.collection(col).onSnapshot(s=>cb(s.docs.map(d=>Object.assign(d.data(),{id:d.id}))),onErr(col));
     },
-    listenDoc(col,id,cb){ return fs.collection(col).doc(id).onSnapshot(d=>cb(d.exists?d.data():null),onErr(col)); },
+    listenDoc(col,id,cb,errCb){ return fs.collection(col).doc(id).onSnapshot(d=>cb(d.exists?d.data():null),e=>{ console.warn(col,e); errCb?errCb(e):onErr(col)(e); }); },
     async getAll(col){ const s=await fs.collection(col).get(); return s.docs.map(d=>Object.assign(d.data(),{id:d.id})); },
     async getDoc(col,id){ const d=await fs.collection(col).doc(id).get(); return d.exists?d.data():null; },
     async batch(ops){
@@ -385,16 +385,34 @@ function stopListeners(){ unsubs.forEach(u=>u&&u()); unsubs=[]; Object.keys(S.re
 function startListeners(){
   stopListeners();
   const map=arr=>Object.fromEntries(arr.map(d=>[d.id,d]));
-  unsubs.push(DB.listen("config",arr=>{ const g=arr.find(d=>d.id==="game"); S.cfg=Object.assign(clone(DEFAULT_CFG),g||{}); S.cfg.pts=Object.assign({},DEFAULT_CFG.pts,(g||{}).pts||{}); S.ready.config=true; render(); }));
+  unsubs.push(DB.listen("config",arr=>{ const g=arr.find(d=>d.id==="game"); S.cfg=Object.assign(clone(DEFAULT_CFG),g||{}); S.cfg.pts={ganador:((g||{}).pts||{}).ganador??DEFAULT_CFG.pts.ganador, tramo:((g||{}).pts||{}).tramo??DEFAULT_CFG.pts.tramo}; S.ready.config=true; render(); }));
   unsubs.push(DB.listen("teams",arr=>{ S.teams=map(arr); S.ready.teams=true; render(); }));
   unsubs.push(DB.listen("managers",arr=>{ S.managers=map(arr); S.ready.managers=true; render(); }));
   unsubs.push(DB.listen("jornadas",arr=>{ S.jornadas=map(arr); S.ready.jornadas=true; render(); }));
+}
+// Si config/game no existe o viene de una versión anterior (sin "estado"), el admin lo crea al entrar.
+async function ensureConfig(){
+  try{
+    const g=await DB.getDoc("config","game");
+    if(g&&typeof g.estado==="string"&&g.pts&&g.ptsV===DEFAULT_CFG.ptsV) return;
+    const data={season:(g&&g.season)||DEFAULT_CFG.season, jornada:typeof (g&&g.jornada)==="number"?g.jornada:0, estado:(g&&g.estado)||"open", pts:clone(DEFAULT_CFG.pts), ptsV:DEFAULT_CFG.ptsV};
+    await DB.batch([{op:"set",col:"config",id:"game",data,fields:["season","jornada","estado","pts","ptsV"]}]);
+    toast("⚙️ Configuración del juego actualizada");
+  }catch(e){ console.warn("ensureConfig",e); }
 }
 let predUnsub=null;
 function watchMyPreds(){
   predUnsub&&predUnsub(); S.ready.preds=false;
   if(!S.user){ S.myPreds={}; return; }
-  predUnsub=DB.listenDoc("preds",S.user.uid,d=>{ S.myPreds=d||{}; S.ready.preds=true; render(); });
+  const uid=S.user.uid; let created=false;
+  predUnsub=DB.listenDoc("preds",uid,d=>{
+    // cuentas creadas con versiones anteriores no tienen documento de pronósticos: se crea vacío
+    if(!d&&!created){ created=true; DB.batch([{op:"set",col:"preds",id:uid,data:{}}]).catch(()=>{}); }
+    S.myPreds=d||{}; S.ready.preds=true; render();
+  }, e=>{
+    S.myPreds={}; S.ready.preds=true; render();
+    toast(e&&e.code==="permission-denied"?"Sin permiso para leer pronósticos: publica las reglas nuevas de Firestore":"Error de conexión (pronósticos)",true);
+  });
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -402,12 +420,9 @@ function watchMyPreds(){
    ════════════════════════════════════════════════════════════════ */
 // Valora un pronóstico contra el resultado real. Devuelve puntos y qué se acertó.
 function scorePred(pr,res){
-  const out={pts:0,g:false,t:false,ex:false,near:false};
+  const out={pts:0,g:false,t:false};
   if(!pr||!res||typeof res.us!=="number") return out;
   const d=res.us-res.them; const P=S.cfg.pts;
-  const hasScore=typeof pr.us==="number"&&typeof pr.them==="number";
-  if(hasScore&&pr.us===res.us&&pr.them===res.them){ out.ex=true; out.pts+=P.exacto; }
-  else if(hasScore&&Math.abs(pr.us-res.us)<=3&&Math.abs(pr.them-res.them)<=3){ out.near=true; out.pts+=P.cerca; }
   if(d!==0&&pr.w===(d>0?"W":"L")){ out.g=true; out.pts+=P.ganador; if(pr.t===tramoOf(d)){ out.t=true; out.pts+=P.tramo; } }
   return out;
 }
@@ -420,20 +435,13 @@ async function savePred(tid,patch){
   Object.keys(p).forEach(k=>{ if(p[k]===null||p[k]===undefined||p[k]==="") delete p[k]; });
   if(!p.w){ delete p.t; }
   if(Object.keys(p).length) all[J][tid]=p; else delete all[J][tid];
-  S.myPreds=all; // respuesta inmediata en pantalla
-  await DB.batch([{op:"set",col:"preds",id:S.user.uid,data:{[J]:all[J]},fields:[J]}]);
+  const prev=S.myPreds; S.myPreds=all; render(); // respuesta inmediata en pantalla
+  try{ await DB.batch([{op:"set",col:"preds",id:S.user.uid,data:{[J]:all[J]},fields:[J]}]); }
+  catch(e){ console.warn("preds",e); S.myPreds=prev; render();
+    toast(e&&e.code==="permission-denied"?"No se pudo guardar: el club aún no ha abierto los pronósticos (falta config/game en Firestore)":"No se pudo guardar el pronóstico. Revisa la conexión",true); }
 }
-function pickW(tid,w){ const p=myPred(jOpen(),tid)||{}; if(p.w===w) return savePred(tid,{w:null,t:null,us:null,them:null}); const patch={w}; if(typeof p.us==="number"&&((p.us>p.them)!==(w==="W"))) Object.assign(patch,{us:null,them:null}); savePred(tid,patch); }
-function pickT(tid,t){ const p=myPred(jOpen(),tid)||{}; if(!p.w) return toast("Primero elige quién gana",true); const patch={t:p.t===t?null:t}; if(typeof p.us==="number"&&tramoOf(p.us-p.them)!==t) Object.assign(patch,{us:null,them:null}); savePred(tid,patch); }
-function setScore(tid){
-  const us=$("sc_us_"+tid).value.trim(), th=$("sc_th_"+tid).value.trim();
-  if(us===""||th===""){ if(us===""&&th==="") savePred(tid,{us:null,them:null}); return; }
-  const a=parseInt(us,10), b=parseInt(th,10);
-  if(!(a>=0&&a<200&&b>=0&&b<200)) return toast("Marcador no válido",true);
-  if(a===b) return toast("En baloncesto no hay empates: cambia un número",true);
-  // el marcador exacto rellena solo el ganador y la diferencia
-  savePred(tid,{us:a,them:b,w:a>b?"W":"L",t:tramoOf(a-b)});
-}
+function pickW(tid,w){ const p=myPred(jOpen(),tid)||{}; savePred(tid, p.w===w ? {w:null,t:null} : {w}); }
+function pickT(tid,t){ const p=myPred(jOpen(),tid)||{}; if(!p.w) return toast("Primero elige quién gana",true); savePred(tid,{t:p.t===t?null:t}); }
 
 /* ── Admin: ciclo de jornada ── */
 async function closeOps(){
@@ -441,7 +449,7 @@ async function closeOps(){
   const all=await DB.getAll("preds"); const locked={}; const agg={};
   Object.keys(fx).forEach(tid=>agg[tid]={n:0,w:0});
   all.forEach(doc=>{ const uid=doc.id; const pj=doc[String(J)]; if(!pj||!S.managers[uid]) return;
-    const clean={}; Object.entries(pj).forEach(([tid,pr])=>{ if(!fx[tid]||!pr.w||S.managers[uid].teamId===tid) return; clean[tid]=pr; agg[tid].n++; if(pr.w==="W") agg[tid].w++; });
+    const clean={}; Object.entries(pj).forEach(([tid,pr])=>{ if(!fx[tid]||!pr.w||S.managers[uid].teamId===tid) return; clean[tid]={w:pr.w,t:pr.t||null}; agg[tid].n++; if(pr.w==="W") agg[tid].w++; });
     if(Object.keys(clean).length) locked[uid]=clean; });
   return [
     {op:"set",col:"predsLocked",id:String(J),data:locked},
@@ -454,8 +462,8 @@ async function publishOps(J,results){
   const locked=(await DB.getDoc("predsLocked",String(J)))||{};
   const mPts={};
   Object.entries(locked).forEach(([uid,pj])=>{
-    const s={p:0,n:0,g:0,t:0,ex:0};
-    Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return; const o=scorePred(pr,r); s.n++; s.p+=o.pts; if(o.g)s.g++; if(o.t)s.t++; if(o.ex)s.ex++; });
+    const s={p:0,n:0,g:0,t:0};
+    Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return; const o=scorePred(pr,r); s.n++; s.p+=o.pts; if(o.g)s.g++; if(o.t)s.t++; });
     mPts[uid]=s;
   });
   const order=Object.entries(mPts).sort((a,b)=>b[1].p-a[1].p);
@@ -494,10 +502,10 @@ function ranking(opts){
   return arr;
 }
 function badgesOf(uid){
-  const pub=published(); const res={pleno:0,clavado:0,racha:0,fiel:0,podio:0,ojo:0};
+  const pub=published(); const res={pleno:0,triple:0,racha:0,fiel:0,podio:0,ojo:0};
   let run=0, best=0, jugadas=0, tramos=0;
   pub.forEach(j=>{ const s=(j.mPts||{})[uid];
-    if(s&&s.n){ jugadas++; tramos+=s.t||0; if(s.n>=3&&s.g===s.n) res.pleno++; res.clavado+=s.ex||0;
+    if(s&&s.n){ jugadas++; tramos+=s.t||0; if(s.n>=3&&s.g===s.n) res.pleno++; if((s.t||0)>=3) res.triple++;
       if(s.g/s.n>=0.5){ run++; best=Math.max(best,run); } else run=0; }
     else run=0;
     if((j.podium||[]).includes(uid)) res.podio++; });
@@ -618,7 +626,7 @@ function jornadaScreen(){
     const dis=open?"":"disabled";
     const bw=(w,l)=>`<button class="pick ${w==="W"?"w":"l"} ${p.w===w?"on":""}" ${dis} onclick="pickW('${tid}','${w}')">${l}</button>`;
     const bt=k=>`<button class="pick ${p.t===k?"on":""}" ${dis} onclick="pickT('${tid}',${k})">${TRAMOS[k]}</button>`;
-    const full=p.w&&p.t; const hasSc=typeof p.us==="number";
+    const full=p.w&&p.t;
     return `<div class="pcard">
       <div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${fxText(f)}</div></div>
         ${p.w?`<span class="pill ${full?"g":"o"}">${full?"✓ Listo":"Falta diferencia"}</span>`:""}</div>
@@ -626,16 +634,12 @@ function jornadaScreen(){
       <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc((f.rival||"el rival").split(" ").slice(0,2).join(" ")))}</div>
       <div class="plbl ${p.w?"":"dim"}">¿Por cuántos puntos? <span>+${P.tramo}</span></div>
       <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(bt).join("")}</div>
-      <div class="plbl">Marcador exacto <span>+${P.exacto} · opcional</span></div>
-      <div class="score"><div class="sc"><div class="tiny">CBJ</div><input class="fi vin" id="sc_us_${tid}" inputmode="numeric" maxlength="3" placeholder="–" ${dis} value="${hasSc?p.us:""}" onchange="setScore('${tid}')"></div>
-        <div class="muted d" style="font-size:22px">–</div>
-        <div class="sc"><div class="tiny">${esc((f.rival||"Rival").slice(0,12))}</div><input class="fi vin" id="sc_th_${tid}" inputmode="numeric" maxlength="3" placeholder="–" ${dis} value="${hasSc?p.them:""}" onchange="setScore('${tid}')"></div></div>
       ${agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} del club dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
     </div>`; };
   return header(`Jornada ${J}`,open?`${done} de ${mine.length} pronosticados`:"Pronósticos cerrados")+
   `<div class="content">
     ${stateBanner()}
-    ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Nadie ve tus pronósticos: solo tus puntos. Acertar muy cerca el marcador (±3 cada equipo) da <b style="color:var(--tx)">+${P.cerca}</b>.</div>`+fx.map(card).join("")
+    ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Nadie ve tus pronósticos: solo tus puntos. Quién gana <b style="color:var(--tx)">+${P.ganador}</b> · por cuánto <b style="color:var(--tx)">+${P.tramo}</b>.</div>`+fx.map(card).join("")
       :`<div class="card"><div class="empty">El club todavía no ha publicado los partidos de la jornada ${J}.<br>Vuelve en unos días.</div></div>`}
   </div>`;
 }
@@ -656,7 +660,7 @@ function clasifScreen(){
       return `<div class="row ${x.uid===S.user.uid?"me":""}" style="cursor:default">
         <div class="rank ${x.rank<=3?"r"+x.rank:""}">${x.rank}</div>
         ${t?tbadge(t,30):`<div class="tbadge fam" style="width:30px;height:30px">👪</div>`}
-        <div class="rmain"><div class="rname">${esc(x.m.name)}</div><div class="rsub">${s?`${s.g}/${s.n} ganadores${s.ex?" · "+s.ex+" exacto"+(s.ex>1?"s":""):""}`:t?esc(t.name):"Familia y amigos"}</div></div>
+        <div class="rmain"><div class="rname">${esc(x.m.name)}</div><div class="rsub">${s?`${s.g}/${s.n} ganadores · ${s.t} diferencias`:t?esc(t.name):"Familia y amigos"}</div></div>
         <div class="rnum"><div class="v">${x.pts||0}</div><div class="l">pts</div></div></div>`; }).join("")||`<div class="empty">${c.mode==="cat"?"Nadie de tu categoría todavía.":"Nadie todavía."}</div>`}</div>`:""}
   </div>`;
 }
@@ -690,7 +694,7 @@ function resultadosScreen(){
         <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div><div class="tiny" style="margin-top:3px">${rows.filter(([,r])=>r.us>r.them).length} victorias del club de ${rows.length}</div></div>
           <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${s?s.p:"—"}</div><div class="slbl">${s?"tus puntos":"no jugaste"}</div></div></div></div>
         ${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them; const pr=((S.myPreds||{})[String(j.n)]||{})[tid]; const o=pr?scorePred(pr,r):null;
-          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(j.fixtures?.[tid]?.rival||"")}${pr?` · dijiste ${pr.w==="W"?"gana":"pierde"}${pr.t?" por "+TRAMOS[pr.t]:""}${typeof pr.us==="number"?" ("+pr.us+"-"+pr.them+")":""}`:""}</div></div>
+          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(j.fixtures?.[tid]?.rival||"")}${pr&&pr.w?" · dijiste "+(pr.w==="W"?"gana":"pierde")+(pr.t?" por "+TRAMOS[pr.t]:""):""}</div></div>
             <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div>
             <div class="rnum" style="min-width:34px"><div class="v ${o&&o.pts?"":"muted"}" style="font-size:16px">${o?(o.pts?"+"+o.pts:"0"):"·"}</div></div></div>`; }).join("")}
       </div>`; }).join("")
@@ -739,7 +743,7 @@ function openRules(){
     Cada semana el club publica los partidos del fin de semana, de alevines a senior. Tú pronosticas cada partido:<br>
     &nbsp;&nbsp;· <b>¿Quién gana?</b> +${P.ganador}<br>
     &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 14, 15 o más) +${P.tramo} si también aciertas quién gana<br>
-    &nbsp;&nbsp;· <b>Marcador exacto</b> (opcional): +${P.exacto}. Si te quedas a 3 puntos o menos en los dos marcadores: +${P.cerca}<br><br>
+    <br>
     <b>El partido de tu equipo no se pronostica.</b> Ese se juega en la pista y se anima desde la grada.<br><br>
     Los pronósticos se cierran antes del primer partido del fin de semana. <b>Nadie ve lo que ha dicho cada uno</b>: solo los puntos.<br><br>
     Hay clasificación general, por categoría y por jornada, un podio cada semana e insignias por conseguir.<br><br>
@@ -867,17 +871,15 @@ function admAjustes(){
     <div class="fl">Puntos</div>
     <div class="frow"><div class="fg"><label class="fl" for="cf_g">Ganador</label><input class="fi" id="cf_g" inputmode="numeric" value="${P.ganador}"></div>
       <div class="fg"><label class="fl" for="cf_t">Diferencia</label><input class="fi" id="cf_t" inputmode="numeric" value="${P.tramo}"></div></div>
-    <div class="frow"><div class="fg"><label class="fl" for="cf_e">Marcador exacto</label><input class="fi" id="cf_e" inputmode="numeric" value="${P.exacto}"></div>
-      <div class="fg"><label class="fl" for="cf_c">Marcador cerca (±3)</label><input class="fi" id="cf_c" inputmode="numeric" value="${P.cerca}"></div></div>
     <div class="tiny" style="margin-bottom:10px">Los cambios de puntos se aplican a las jornadas que se publiquen a partir de ahora.</div>
     <button class="btn-p" onclick="admSaveCfg()">Guardar ajustes</button>
     ${!DEMO?`<div class="fg mt12"><label class="fl" for="cf_code">Código del club</label><div class="frow"><input class="fi" id="cf_code" placeholder="Nuevo código"><button class="btn-sm" onclick="admSetCode()">Cambiar</button></div></div>`:""}
   </div>`;
 }
 async function admSaveCfg(){
-  const n=id=>Number($(id).value); const pts={ganador:n("cf_g"),tramo:n("cf_t"),exacto:n("cf_e"),cerca:n("cf_c")};
+  const n=id=>Number($(id).value); const pts={ganador:n("cf_g"),tramo:n("cf_t")};
   if(Object.values(pts).some(v=>!(v>=0&&v<=50))) return toast("Revisa los puntos",true);
-  await DB.batch([{op:"set",col:"config",id:"game",data:{season:$("cf_season").value.trim()||S.cfg.season,pts},merge:true}]); toast("Ajustes guardados");
+  await DB.batch([{op:"set",col:"config",id:"game",data:{season:$("cf_season").value.trim()||S.cfg.season,pts},fields:["season","pts"]}]); toast("Ajustes guardados");
 }
 async function admSetCode(){ const v=$("cf_code").value.trim(); if(v.length<4) return toast("Mínimo 4 caracteres",true);
   try{ await DB.setClubCode(v); toast("Código cambiado"); $("cf_code").value=""; }catch(e){ toast("Error: "+e.message,true); } }
@@ -903,7 +905,7 @@ async function seedDemo(){
     nicks.forEach((n,k)=>{ const uid="d"+k; const pj={};
       Object.keys(fixtures).forEach(tid=>{ if(S.managers[uid].teamId===tid||rnd()<.15) return; const r=results[tid]; const good=rnd()<.62;
         const w = good ? (r.us>r.them?"W":"L") : (r.us>r.them?"L":"W"); const pr={w,t:1+Math.floor(rnd()*3)};
-        if(rnd()<.3){ const us=r.us+Math.round((rnd()-.5)*(rnd()<.15?0:10)), them=r.them+Math.round((rnd()-.5)*(rnd()<.15?0:10)); if((us>them)===(w==="W")&&us!==them){ pr.us=us; pr.them=them; pr.t=tramoOf(us-them); } }
+        if(good&&rnd()<.45) pr.t=tramoOf(r.us-r.them);
         pj[tid]=pr; });
       pops.push({op:"set",col:"preds",id:uid,data:{[J]:pj},fields:[String(J)]}); });
     await DB.batch(pops);
@@ -921,6 +923,7 @@ async function seedDemo(){
     const prev=S.user&&S.user.uid; S.user=u;
     if(!DEMO){ if(u&&u.uid!==prev) startListeners(); if(!u) stopListeners(); }
     watchMyPreds();
+    if(u&&u.admin&&!DEMO) ensureConfig();
     if(u&&S.tab==="admin"&&!u.admin) S.tab="jornada";
     closeModal(); render();
   });
