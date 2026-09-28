@@ -1,12 +1,12 @@
 rules_version = '2';
-// SuperManager CBJ — reglas de seguridad de Firestore.
-// Admins: crear a mano en la consola un documento vacío admins/{uid} con el UID de tu cuenta.
+// Pronósticos CBJ — reglas de seguridad de Firestore.
+// Admins: crear a mano en la consola un documento admins/{uid} (con un campo cualquiera) con el UID de tu cuenta.
 // Código del club: documento secret/club con el campo code (en MAYÚSCULAS). Nadie puede leerlo.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
-    function mercadoAbierto() { return get(/databases/$(database)/documents/config/game).data.mercado == 'open'; }
+    function abierto() { return get(/databases/$(database)/documents/config/game).data.estado == 'open'; }
 
     match /config/{doc} {
       allow read: if signedIn();
@@ -20,7 +20,7 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == uid;
       allow write: if false;
     }
-    // Registro: solo si el código coincide con secret/club.
+    // Registro: solo con el código del club.
     match /joins/{uid} {
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.code == get(/databases/$(database)/documents/secret/club).data.code;
@@ -30,26 +30,32 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
+    // Jornadas públicas: partidos, resultados, puntos y porcentajes globales. Nunca pronósticos individuales.
     match /jornadas/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
+    // Cuentas: apodo, equipo y puntos. Los puntos solo los escribe el admin.
     match /managers/{uid} {
       allow read: if signedIn();
       allow create: if signedIn() && request.auth.uid == uid
         && exists(/databases/$(database)/documents/joins/$(uid))
         && request.resource.data.total == 0
         && request.resource.data.byJ.size() == 0
-        && request.resource.data.roster.size() == 0
-        && request.resource.data.ageOk == true;
-      // Cada mánager solo toca su plantilla, capitán, porra y nombre de equipo; los puntos solo los escribe el admin.
-      allow update: if isAdmin() || (
-        request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['roster', 'captain', 'chg', 'done', 'preds', 'teamName'])
-        && request.resource.data.roster.size() <= 10
-        && (mercadoAbierto() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamName']))
-      );
+        && request.resource.data.parentOk == true
+        && request.resource.data.name is string && request.resource.data.name.size() <= 18;
+      allow update, delete: if isAdmin();
+    }
+    // Pronósticos: PRIVADOS. Solo su dueño (y el admin para puntuar) puede leerlos.
+    match /preds/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && request.auth.uid == uid && abierto();
       allow delete: if isAdmin();
+    }
+    // Copia congelada de los pronósticos al cerrar cada jornada: solo admin.
+    match /predsLocked/{j} {
+      allow read, write: if isAdmin();
     }
   }
 }

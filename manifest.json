@@ -1,7 +1,7 @@
 {
-  "name": "SuperManager CBJ",
-  "short_name": "SuperManager",
-  "description": "El fantasy de baloncesto del Club Baloncesto Jaca",
+  "name": "Pronósticos CBJ",
+  "short_name": "Pronósticos",
+  "description": "El juego de pronósticos de todo el Club Baloncesto Jaca",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

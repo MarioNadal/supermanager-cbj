@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#070f1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SuperManager CBJ">
-<title>SuperManager CBJ</title>
+<meta name="apple-mobile-web-app-title" content="Pronósticos CBJ">
+<title>Pronósticos CBJ</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -42,6 +42,7 @@ button{font-family:inherit;}
 .nav{display:flex;background:rgba(10,20,38,0.95);border-top:1px solid var(--border);position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding-bottom:env(safe-area-inset-bottom);}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 10px;border:none;background:transparent;color:var(--tm);cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
 .nb.on{color:var(--orange);}
+.nb span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;}
 .nb .ni{font-size:20px;line-height:1.2;}
 .content{padding:14px 16px 90px;padding-bottom:calc(96px + env(safe-area-inset-bottom));}
 /* ── Tipografía / cajas ── */
@@ -171,6 +172,37 @@ button{font-family:inherit;}
 .fxrow:last-child{border-bottom:none;}
 .rules{font-size:14px;color:var(--tx);line-height:1.65;}
 .stars{color:#fbbf24;letter-spacing:1px;white-space:nowrap;}.stars .off{color:var(--s3);}
+/* ── v0.3: pronósticos ── */
+.pcard.own{border-style:dashed;background:rgba(240,99,24,.05);}
+.owntxt{font-size:14px;color:var(--td);padding:4px 2px 2px;}
+.owntxt b{color:var(--orange);}
+.plbl{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--td);margin:12px 2px 6px;display:flex;justify-content:space-between;}
+.plbl span{color:var(--orange);letter-spacing:.5px;text-transform:none;}
+.plbl.dim{opacity:.4;}
+.prow{margin-bottom:2px;}
+.score{display:flex;align-items:flex-end;justify-content:center;gap:12px;}
+.sc{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.sc .vin{width:86px;font-size:22px;}
+.agg{margin-top:12px;}
+.aggbar{height:6px;border-radius:3px;background:rgba(239,68,68,.35);overflow:hidden;margin-bottom:5px;}
+.aggbar span{display:block;height:100%;background:var(--green);border-radius:3px;}
+.tbadge.fam{background:var(--s3);font-size:15px;}
+.podium .pod{display:flex;align-items:flex-end;justify-content:center;gap:8px;}
+.pstep{flex:1;max-width:120px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.pmedal{font-size:26px;line-height:1;}
+.pname{font-weight:800;font-size:13px;margin-top:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ppts{font-family:var(--font-d);font-weight:900;font-size:18px;color:var(--orange);}
+.pblock{width:100%;border-radius:8px 8px 0 0;margin-top:6px;background:linear-gradient(180deg,var(--s3),var(--s2));border:1px solid var(--border);border-bottom:none;}
+.pstep.p1 .pblock{height:56px;background:linear-gradient(180deg,rgba(251,191,36,.35),var(--s2));}
+.pstep.p2 .pblock{height:38px;}
+.pstep.p3 .pblock{height:26px;}
+.bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.bdg{position:relative;background:var(--s);border:1px solid var(--border);border-radius:var(--r);padding:12px 6px 10px;text-align:center;cursor:pointer;color:var(--tm);}
+.bdg .bic{font-size:28px;line-height:1.1;filter:grayscale(1);opacity:.35;}
+.bdg .bt{font-size:11.5px;font-weight:800;margin-top:5px;}
+.bdg.on{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.06);color:var(--tx);}
+.bdg.on .bic{filter:none;opacity:1;}
+.bdg .bn{position:absolute;top:6px;right:7px;font-family:var(--font-d);font-weight:900;font-size:13px;color:#fbbf24;}
 </style>
 </head>
 <body>
@@ -183,14 +215,15 @@ button{font-family:inherit;}
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════
-   SUPERMANAGER CBJ — el juego de todo el Club Baloncesto Jaca
-   Fantasy de EQUIPOS (no de jugadores) + porra de resultados.
-   Ningún menor aparece puntuado: solo equipos y marcadores.
+   PRONÓSTICOS CBJ — el juego de todo el Club Baloncesto Jaca
+   Cada familia pronostica los partidos del club del fin de semana.
+   · No se puntúa a ningún jugador: solo equipos y marcadores.
+   · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
+   · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 
-// ⚙️ Configuración del proyecto Firebase (Consola → Configuración del proyecto → Tus apps → Web).
-// Si es null, la app funciona en MODO DEMO con datos ficticios guardados solo en este navegador.
+// ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCHkwRoR7kO169mDdUi8Jy2EwJagBliYfw",
   authDomain: "supermanager-cbj.firebaseapp.com",
@@ -208,52 +241,46 @@ const CATS = {
 };
 const CAT_ORDER = Object.keys(CATS);
 const GENDERS = {M:"Masculino",F:"Femenino",X:"Mixto"};
-const TRAMOS = {1:"1-5",2:"6-14",3:"15+"};
-const DEFAULT_CFG = {season:"2026-27",jornada:0,mercado:"open",estrellas:10,plantilla:5,cambios:2,capMult:2,
-  // Puntos del equipo según la diferencia final (nosotros − rival)
-  puntos:[{min:15,pts:15},{min:6,pts:12},{min:1,pts:10},{min:0,pts:5},{min:-5,pts:4},{min:-14,pts:2},{min:-999,pts:0}],
-  porraGanador:3, porraTramo:2};
+const TRAMOS = {1:"1 a 5",2:"6 a 14",3:"15 o más"};
+const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:3,tramo:2,exacto:5,cerca:2}};
+const BADGES = [
+  {k:"pleno",  ic:"🎯", t:"Pleno",        d:"Acierta el ganador de todos tus partidos de una jornada (mínimo 3)."},
+  {k:"clavado",ic:"🔒", t:"Clavado",      d:"Acierta un marcador exacto."},
+  {k:"racha",  ic:"🔥", t:"En racha",     d:"3 jornadas seguidas acertando al menos la mitad de ganadores."},
+  {k:"fiel",   ic:"📅", t:"Fiel",         d:"Pronostica 5 jornadas."},
+  {k:"podio",  ic:"🏆", t:"Podio",        d:"Queda entre los 3 primeros de una jornada."},
+  {k:"ojo",    ic:"🦅", t:"Ojo de halcón",d:"Acierta 10 diferencias (ganador + por cuánto)."}
+];
 
 /* ── Utilidades ── */
 const $ = id => document.getElementById(id);
 const clone = o => JSON.parse(JSON.stringify(o ?? null));
 const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-const r1 = n => Math.round(n*10)/10;
-const fmt1 = n => (Number.isInteger(n)? String(n) : r1(n).toFixed(1)).replace(".",",");
-const starsTxt = n => "★".repeat(Math.max(0,n||0));
-function starsHtml(n,size){ n=n||1; return `<span class="stars" style="${size?"font-size:"+size+"px":""}">${"★".repeat(n)}<span class="off">${"★".repeat(Math.max(0,3-n))}</span></span>`; }
 const tramoOf = d => { const a=Math.abs(d); return a<=5?1:a<=14?2:3; };
+const pct = x => Math.round(x*100)+"%";
 function toast(msg,err){ const t=document.createElement("div"); t.className="toast"+(err?" err":""); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
-function teamPtsFor(diff){ for(const t of S.cfg.puntos) if(diff>=t.min) return t.pts; return 0; }
-function tierLabel(i){
-  const T=S.cfg.puntos, lo=T[i].min, hi=i===0?Infinity:T[i-1].min-1;
-  if(lo>=1) return hi===Infinity?`Gana de ${lo} o más`:`Gana de ${lo} a ${hi}`;
-  if(lo===0&&hi===0) return "Empate";
-  if(hi<=-1) return lo<=-999?`Pierde de ${-hi} o más`:`Pierde de ${-hi} a ${-lo}`;
-  return `Pierde de 1 a ${-lo}`;
-}
 
 /* ════════════════════════════════════════════════════════════════
    CAPA DE DATOS — misma interfaz para demo (localStorage) y Firebase
    ════════════════════════════════════════════════════════════════ */
-function newManagerDoc(nick,teamName){
-  return {name:nick.trim(),teamName:(teamName||"").trim()||("Los de "+nick.trim()),roster:[],captain:null,
-          chg:{j:0,used:0},done:false,preds:{},total:0,byJ:{},byP:{},ageOk:true,createdAt:Date.now()};
-}
+function newUserDoc(nick,teamId){ return {name:nick.trim(),teamId:teamId||null,total:0,byJ:{},parentOk:true,createdAt:Date.now()}; }
 function makeLocalDB(){
-  const KEY="smcbj:demo:v2";
+  const KEY="pcbj:demo:v3";
   let store=null; try{store=JSON.parse(localStorage.getItem(KEY)||"null");}catch(e){}
   const fresh=!store;
-  if(!store) store={teams:{},managers:{},jornadas:{},config:{},users:{}};
+  if(!store) store={teams:{},managers:{},jornadas:{},config:{},preds:{},predsLocked:{},users:{}};
   let uid=null; try{uid=localStorage.getItem(KEY+":uid")||null;}catch(e){}
-  const L={}; let authCb=null;
+  const L={}, LD={}; let authCb=null;
   const persist=()=>{ try{localStorage.setItem(KEY,JSON.stringify(store)); localStorage.setItem(KEY+":uid",uid||"");}catch(e){} };
   const list=col=>Object.entries(store[col]||{}).map(([id,d])=>Object.assign(clone(d),{id}));
-  const emit=col=>(L[col]||[]).forEach(cb=>cb(list(col)));
+  const emit=col=>{ (L[col]||[]).forEach(cb=>cb(list(col))); Object.entries(LD).forEach(([k,cbs])=>{ const [c,id]=k.split("/"); if(c===col) cbs.forEach(cb=>cb(store[c][id]?clone(store[c][id]):null)); }); };
   const api={
     demo:true, fresh,
     listen(col,cb){ (L[col]=L[col]||[]).push(cb); cb(list(col)); return ()=>{L[col]=L[col].filter(x=>x!==cb);}; },
+    listenDoc(col,id,cb){ const k=col+"/"+id; (LD[k]=LD[k]||[]).push(cb); cb(store[col]&&store[col][id]?clone(store[col][id]):null); return ()=>{LD[k]=LD[k].filter(x=>x!==cb);}; },
+    async getAll(col){ return list(col); },
+    async getDoc(col,id){ return store[col]&&store[col][id]?clone(store[col][id]):null; },
     async batch(ops){
       ops.forEach(o=>{ store[o.col]=store[o.col]||{};
         if(o.op==="del") delete store[o.col][o.id];
@@ -264,12 +291,12 @@ function makeLocalDB(){
     reset(){ try{localStorage.removeItem(KEY);localStorage.removeItem(KEY+":uid");}catch(e){} location.reload(); },
     auth:{
       onChange(cb){ authCb=cb; cb(uid&&store.managers[uid]?{uid,admin:true}:null); },
-      async register({nick,pin,code,teamName}){
+      async register({nick,pin,code,teamId}){
         if(String(code).trim().toUpperCase()!=="DEMO") throw new Error("Código del club incorrecto (en la demo es DEMO)");
         const k=slug(nick); if(!k) throw new Error("Escribe un apodo");
-        if(store.users[k]) throw new Error("Ese apodo ya está cogido. Si es tuyo, entra con tu PIN.");
+        if(store.users[k]) throw new Error("Ese apodo ya está cogido. Si es vuestro, entrad con el PIN.");
         const id="u"+Math.random().toString(36).slice(2,10);
-        store.users[k]={uid:id,pin}; store.managers[id]=newManagerDoc(nick,teamName);
+        store.users[k]={uid:id,pin}; store.managers[id]=newUserDoc(nick,teamId); store.preds[id]={};
         uid=id; persist(); emit("managers"); authCb&&authCb({uid,admin:true});
       },
       async login({nick,pin}){
@@ -287,18 +314,21 @@ function makeFirebaseDB(){
   const fs=firebase.firestore(), au=firebase.auth();
   const email=nick=>slug(nick)+"@supermanager-cbj.app";
   const pw=pin=>"cbjsm-"+pin;
+  const onErr=col=>e=>{console.warn(col,e); toast("Error de conexión ("+col+")",true);};
   return {
     demo:false,
     listen(col,cb){
-      const onErr=e=>{console.warn(col,e); toast("Error de conexión ("+col+")",true);};
-      if(col==="config") return fs.collection("config").doc("game").onSnapshot(d=>cb(d.exists?[Object.assign(d.data(),{id:"game"})]:[]),onErr);
-      return fs.collection(col).onSnapshot(s=>cb(s.docs.map(d=>Object.assign(d.data(),{id:d.id}))),onErr);
+      if(col==="config") return fs.collection("config").doc("game").onSnapshot(d=>cb(d.exists?[Object.assign(d.data(),{id:"game"})]:[]),onErr(col));
+      return fs.collection(col).onSnapshot(s=>cb(s.docs.map(d=>Object.assign(d.data(),{id:d.id}))),onErr(col));
     },
+    listenDoc(col,id,cb){ return fs.collection(col).doc(id).onSnapshot(d=>cb(d.exists?d.data():null),onErr(col)); },
+    async getAll(col){ const s=await fs.collection(col).get(); return s.docs.map(d=>Object.assign(d.data(),{id:d.id})); },
+    async getDoc(col,id){ const d=await fs.collection(col).doc(id).get(); return d.exists?d.data():null; },
     async batch(ops){
       for(let i=0;i<ops.length;i+=450){
         const b=fs.batch();
         ops.slice(i,i+450).forEach(o=>{ const r=fs.collection(o.col).doc(o.id);
-          if(o.op==="del") b.delete(r); else b.set(r,o.data,o.fields?{mergeFields:o.fields}:o.merge?{merge:true}:{}); });
+          if(o.op==="del") b.delete(r); else b.set(r,o.data,o.fields?{mergeFields:o.fields.map(f=>new firebase.firestore.FieldPath(String(f)))}:o.merge?{merge:true}:{}); });
         await b.commit();
       }
     },
@@ -308,15 +338,16 @@ function makeFirebaseDB(){
       onChange(cb){ au.onAuthStateChanged(async u=>{ if(!u) return cb(null);
         let admin=false; try{ admin=(await fs.collection("admins").doc(u.uid).get()).exists; }catch(e){}
         cb({uid:u.uid,admin}); }); },
-      async register({nick,pin,code,teamName}){
+      async register({nick,pin,code,teamId}){
         if(!slug(nick)) throw new Error("Escribe un apodo");
         let cred;
         try{ cred=await au.createUserWithEmailAndPassword(email(nick),pw(pin)); }
-        catch(e){ throw new Error(e.code==="auth/email-already-in-use"?"Ese apodo ya está cogido. Si es tuyo, entra con tu PIN.":"No se pudo crear la cuenta ("+(e.code||e.message)+")"); }
+        catch(e){ throw new Error(e.code==="auth/email-already-in-use"?"Ese apodo ya está cogido. Si es vuestro, entrad con el PIN.":"No se pudo crear la cuenta ("+(e.code||e.message)+")"); }
         const uid=cred.user.uid;
         try{ await fs.collection("joins").doc(uid).set({code:String(code).trim().toUpperCase(),at:Date.now()}); }
         catch(e){ await cred.user.delete().catch(()=>{}); throw new Error("Código del club incorrecto"); }
-        await fs.collection("managers").doc(uid).set(newManagerDoc(nick,teamName));
+        await fs.collection("managers").doc(uid).set(newUserDoc(nick,teamId));
+        await fs.collection("preds").doc(uid).set({});
       },
       async login({nick,pin}){
         try{ await au.signInWithEmailAndPassword(email(nick),pw(pin)); }
@@ -332,195 +363,146 @@ const DB = DEMO ? makeLocalDB() : makeFirebaseDB();
    ESTADO
    ════════════════════════════════════════════════════════════════ */
 const S = {
-  ready:{config:false,teams:false,managers:false,jornadas:false},
-  cfg:clone(DEFAULT_CFG), teams:{}, managers:{}, jornadas:{},
-  user:null, tab:"equipo",
-  mkt:{cat:"all",sort:"media"},
+  ready:{config:false,teams:false,managers:false,jornadas:false,preds:false},
+  cfg:clone(DEFAULT_CFG), teams:{}, managers:{}, jornadas:{}, myPreds:{},
+  user:null, tab:"jornada", authTab:"login",
   cls:{mode:"general",j:null},
-  adm:{sec:"jornada",draft:null,fx:null},
-  authTab:"login"
+  adm:{sec:"jornada",draft:null,fx:null}
 };
 const me = () => S.user && S.managers[S.user.uid];
 const isAdmin = () => !!(S.user && S.user.admin);
 const jOpen = () => (S.cfg.jornada||0)+1;
 const curJ = () => S.jornadas[String(jOpen())] || null;
+const isOpen = () => S.cfg.estado==="open";
 const published = () => Object.values(S.jornadas).filter(j=>j.status==="published").sort((a,b)=>a.n-b.n);
 const lastPub = () => { const p=published(); return p[p.length-1]||null; };
 const activeTeams = () => Object.values(S.teams).filter(t=>t.active!==false).sort(teamSort);
 function teamSort(a,b){ return CAT_ORDER.indexOf(a.cat)-CAT_ORDER.indexOf(b.cat) || a.gender.localeCompare(b.gender) || a.name.localeCompare(b.name); }
-const fixtureOf = tid => { const j=curJ(); return j&&j.fixtures&&j.fixtures[tid]||null; };
+const catOfUser = m => m&&m.teamId&&S.teams[m.teamId] ? S.teams[m.teamId].cat : null;
 
 let unsubs=[];
 function stopListeners(){ unsubs.forEach(u=>u&&u()); unsubs=[]; Object.keys(S.ready).forEach(k=>S.ready[k]=false); }
 function startListeners(){
   stopListeners();
   const map=arr=>Object.fromEntries(arr.map(d=>[d.id,d]));
-  unsubs.push(DB.listen("config",arr=>{ const g=arr.find(d=>d.id==="game"); S.cfg=Object.assign(clone(DEFAULT_CFG),g||{}); S.ready.config=true; render(); }));
+  unsubs.push(DB.listen("config",arr=>{ const g=arr.find(d=>d.id==="game"); S.cfg=Object.assign(clone(DEFAULT_CFG),g||{}); S.cfg.pts=Object.assign({},DEFAULT_CFG.pts,(g||{}).pts||{}); S.ready.config=true; render(); }));
   unsubs.push(DB.listen("teams",arr=>{ S.teams=map(arr); S.ready.teams=true; render(); }));
   unsubs.push(DB.listen("managers",arr=>{ S.managers=map(arr); S.ready.managers=true; render(); }));
   unsubs.push(DB.listen("jornadas",arr=>{ S.jornadas=map(arr); S.ready.jornadas=true; render(); }));
 }
+let predUnsub=null;
+function watchMyPreds(){
+  predUnsub&&predUnsub(); S.ready.preds=false;
+  if(!S.user){ S.myPreds={}; return; }
+  predUnsub=DB.listenDoc("preds",S.user.uid,d=>{ S.myPreds=d||{}; S.ready.preds=true; render(); });
+}
 
 /* ════════════════════════════════════════════════════════════════
-   LÓGICA DE JUEGO
+   LÓGICA DEL JUEGO
    ════════════════════════════════════════════════════════════════ */
-function teamStats(t){
-  const pts=Object.values(t.pts||{}).filter(v=>typeof v==="number");
-  const n=pts.length, media=n?pts.reduce((a,v)=>a+v,0)/n:0;
-  const res=Object.values(t.res||{}); const w=res.filter(r=>r.us>r.them).length;
-  const lp=lastPub(); const last= lp&&typeof (t.pts||{})[lp.n]==="number" ? t.pts[lp.n] : null;
-  return {n,media,last,w,l:res.filter(r=>r.us<r.them).length};
+// Valora un pronóstico contra el resultado real. Devuelve puntos y qué se acertó.
+function scorePred(pr,res){
+  const out={pts:0,g:false,t:false,ex:false,near:false};
+  if(!pr||!res||typeof res.us!=="number") return out;
+  const d=res.us-res.them; const P=S.cfg.pts;
+  const hasScore=typeof pr.us==="number"&&typeof pr.them==="number";
+  if(hasScore&&pr.us===res.us&&pr.them===res.them){ out.ex=true; out.pts+=P.exacto; }
+  else if(hasScore&&Math.abs(pr.us-res.us)<=3&&Math.abs(pr.them-res.them)<=3){ out.near=true; out.pts+=P.cerca; }
+  if(d!==0&&pr.w===(d>0?"W":"L")){ out.g=true; out.pts+=P.ganador; if(pr.t===tramoOf(d)){ out.t=true; out.pts+=P.tramo; } }
+  return out;
 }
-function ownersPct(tid){ const ms=Object.values(S.managers); return ms.length? ms.filter(m=>(m.roster||[]).includes(tid)).length/ms.length : 0; }
-function rosterStars(roster){ return (roster||[]).reduce((a,id)=>a+(S.teams[id]?.stars||0),0); }
-const starsLeft = m => S.cfg.estrellas - rosterStars(m.roster);
-function changesInfo(m){
-  if(!m.done || (S.cfg.jornada||0)===0) return {unlimited:true,left:Infinity,used:0};
-  const used=(m.chg&&m.chg.j===jOpen())?m.chg.used:0;
-  return {unlimited:false,left:Math.max(0,S.cfg.cambios-used),used};
+function myPred(J,tid){ return ((S.myPreds||{})[String(J)]||{})[tid]||null; }
+async function savePred(tid,patch){
+  if(!isOpen()) return toast("Los pronósticos ya están cerrados",true);
+  if(me().teamId===tid) return;
+  const J=String(jOpen()); const all=clone(S.myPreds||{}); all[J]=all[J]||{};
+  const p=Object.assign({},all[J][tid]||{},patch);
+  Object.keys(p).forEach(k=>{ if(p[k]===null||p[k]===undefined||p[k]==="") delete p[k]; });
+  if(!p.w){ delete p.t; }
+  if(Object.keys(p).length) all[J][tid]=p; else delete all[J][tid];
+  S.myPreds=all; // respuesta inmediata en pantalla
+  await DB.batch([{op:"set",col:"preds",id:S.user.uid,data:{[J]:all[J]},fields:[J]}]);
 }
-function buyCheck(tid){
-  const m=me(), t=S.teams[tid];
-  if(!m||!t) return {ok:false,r:""};
-  if((m.roster||[]).includes(tid)) return {ok:false,r:"Ya está en tu plantilla"};
-  if(S.cfg.mercado!=="open") return {ok:false,r:"Mercado cerrado"};
-  if(t.active===false) return {ok:false,r:"Equipo fuera del juego"};
-  if((m.roster||[]).length>=S.cfg.plantilla) return {ok:false,r:"Ya tienes "+S.cfg.plantilla+" equipos: vende uno antes"};
-  const left=starsLeft(m);
-  if(left<t.stars) return {ok:false,r:(left===1?"Te queda 1 estrella":"Te quedan "+Math.max(0,left)+" estrellas")+" y cuesta "+t.stars};
-  const ch=changesInfo(m); if(!ch.unlimited&&ch.left<=0) return {ok:false,r:"Ya has hecho tus "+S.cfg.cambios+" fichajes de esta jornada"};
-  return {ok:true};
-}
-async function buy(tid){
-  const c=buyCheck(tid); if(!c.ok){ toast(c.r,true); return; }
-  const m=me(), t=S.teams[tid];
-  const roster=[...(m.roster||[]),tid]; const patch={roster};
-  const ch=changesInfo(m); if(!ch.unlimited) patch.chg={j:jOpen(),used:ch.used+1};
-  if(!m.done && roster.length>=S.cfg.plantilla) patch.done=true;
-  if(!m.captain) patch.captain=tid;
-  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:patch,merge:true}]);
-  closeModal(); toast("✅ "+t.name+" fichado"+(patch.captain?" (y es tu capitán)":""));
-}
-function sell(tid){
-  const m=me(), t=S.teams[tid];
-  if(S.cfg.mercado!=="open") return toast("Mercado cerrado",true);
-  const ch=changesInfo(m);
-  confirmModal("Vender "+esc(t.name),`Liberas <b>${t.stars} ${t.stars===1?"estrella":"estrellas"}</b>.${ch.unlimited?"":`<br><br>Vender es gratis, pero fichar al sustituto gasta 1 cambio (te quedan <b>${ch.left}</b>).`}${m.captain===tid?"<br><br>⚠️ Es tu capitán: tendrás que elegir otro.":""}`,"Vender",async()=>{
-    const roster=(m.roster||[]).filter(x=>x!==tid);
-    await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{roster,captain:m.captain===tid?(roster[0]||null):m.captain},merge:true}]);
-    closeModal(); toast("💸 "+t.name+" vendido");
-  });
-}
-async function setCaptain(tid){
-  if(S.cfg.mercado!=="open") return toast("Mercado cerrado",true);
-  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{captain:tid},merge:true}]);
-  closeModal(); toast("© "+S.teams[tid].name+" es tu capitán (×"+S.cfg.capMult+")");
-}
-async function setPred(tid,field,val){
-  if(S.cfg.mercado!=="open") return toast("Mercado cerrado: pronósticos bloqueados",true);
-  const m=me(); const J=String(jOpen());
-  const preds=clone(m.preds||{}); preds[J]=preds[J]||{}; const p=preds[J][tid]=preds[J][tid]||{};
-  if(p[field]===val) delete p[field]; else p[field]=val;
-  if(field==="w"&&!p.w) delete p.t;
-  if(!p.w&&!p.t) delete preds[J][tid];
-  // limpiar jornadas antiguas: solo se guarda la abierta (las cerradas quedan en la jornada)
-  Object.keys(preds).forEach(k=>{ if(k!==J) delete preds[k]; });
-  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{preds},fields:["preds"]}]);
-}
-
-/* ── Puntuación ── */
-function porraPts(pred,res){
-  if(!pred||!pred.w||!res) return 0;
-  const d=res.us-res.them; if(d===0) return 0;
-  const win=d>0?"W":"L"; if(pred.w!==win) return 0;
-  return S.cfg.porraGanador + (pred.t===tramoOf(d)?S.cfg.porraTramo:0);
-}
-function scoreJornada(jd,results){
-  const tPts={};
-  Object.entries(results).forEach(([tid,r])=>{ if(typeof r.us==="number"&&typeof r.them==="number") tPts[tid]=teamPtsFor(r.us-r.them); });
-  const mPts={};
-  const uids=new Set([...Object.keys(jd.lineups||{}),...Object.keys(jd.preds||{})]);
-  uids.forEach(uid=>{
-    const lu=(jd.lineups||{})[uid]||{roster:[],captain:null};
-    let f=0; (lu.roster||[]).forEach(tid=>{ const p=tPts[tid]||0; f+= tid===lu.captain ? p*S.cfg.capMult : p; });
-    let p=0; Object.entries((jd.preds||{})[uid]||{}).forEach(([tid,pr])=>{ p+=porraPts(pr,results[tid]); });
-    mPts[uid]={f:r1(f),p,t:r1(f+p)};
-  });
-  return {tPts,mPts};
+function pickW(tid,w){ const p=myPred(jOpen(),tid)||{}; if(p.w===w) return savePred(tid,{w:null,t:null,us:null,them:null}); const patch={w}; if(typeof p.us==="number"&&((p.us>p.them)!==(w==="W"))) Object.assign(patch,{us:null,them:null}); savePred(tid,patch); }
+function pickT(tid,t){ const p=myPred(jOpen(),tid)||{}; if(!p.w) return toast("Primero elige quién gana",true); const patch={t:p.t===t?null:t}; if(typeof p.us==="number"&&tramoOf(p.us-p.them)!==t) Object.assign(patch,{us:null,them:null}); savePred(tid,patch); }
+function setScore(tid){
+  const us=$("sc_us_"+tid).value.trim(), th=$("sc_th_"+tid).value.trim();
+  if(us===""||th===""){ if(us===""&&th==="") savePred(tid,{us:null,them:null}); return; }
+  const a=parseInt(us,10), b=parseInt(th,10);
+  if(!(a>=0&&a<200&&b>=0&&b<200)) return toast("Marcador no válido",true);
+  if(a===b) return toast("En baloncesto no hay empates: cambia un número",true);
+  // el marcador exacto rellena solo el ganador y la diferencia
+  savePred(tid,{us:a,them:b,w:a>b?"W":"L",t:tramoOf(a-b)});
 }
 
 /* ── Admin: ciclo de jornada ── */
-function closeMarketOps(){
-  const J=jOpen(); const jd=S.jornadas[String(J)]||{};
-  const lineups={}, preds={};
-  Object.entries(S.managers).forEach(([uid,m])=>{
-    lineups[uid]={roster:[...(m.roster||[])],captain:m.captain&&(m.roster||[]).includes(m.captain)?m.captain:null};
-    const pr=(m.preds||{})[String(J)]; if(pr&&Object.keys(pr).length) preds[uid]=clone(pr);
-  });
+async function closeOps(){
+  const J=jOpen(); const jd=S.jornadas[String(J)]||{}; const fx=jd.fixtures||{};
+  const all=await DB.getAll("preds"); const locked={}; const agg={};
+  Object.keys(fx).forEach(tid=>agg[tid]={n:0,w:0});
+  all.forEach(doc=>{ const uid=doc.id; const pj=doc[String(J)]; if(!pj||!S.managers[uid]) return;
+    const clean={}; Object.entries(pj).forEach(([tid,pr])=>{ if(!fx[tid]||!pr.w||S.managers[uid].teamId===tid) return; clean[tid]=pr; agg[tid].n++; if(pr.w==="W") agg[tid].w++; });
+    if(Object.keys(clean).length) locked[uid]=clean; });
   return [
-    {op:"set",col:"jornadas",id:String(J),data:{n:J,status:"closed",fixtures:jd.fixtures||{},results:jd.results||{},lineups,preds,closedAt:Date.now()},fields:["n","status","fixtures","results","lineups","preds","closedAt"]},
-    {op:"set",col:"config",id:"game",data:{mercado:"closed"},merge:true}
+    {op:"set",col:"predsLocked",id:String(J),data:locked},
+    {op:"set",col:"jornadas",id:String(J),data:{n:J,status:"closed",fixtures:fx,results:jd.results||{},agg,players:Object.keys(locked).length,closedAt:Date.now()},fields:["n","status","fixtures","results","agg","players","closedAt"]},
+    {op:"set",col:"config",id:"game",data:{estado:"closed"},merge:true}
   ];
 }
-function reopenMarketOps(){
-  const J=jOpen();
-  return [{op:"set",col:"config",id:"game",data:{mercado:"open"},merge:true},
-          {op:"set",col:"jornadas",id:String(J),data:{status:"open",lineups:{},preds:{}},fields:["status","lineups","preds"]}];
-}
-function publishOps(J,results){
+async function publishOps(J,results){
   const jd=Object.assign({},S.jornadas[String(J)]||{}); delete jd.id;
-  const {tPts,mPts}=scoreJornada(jd,results);
+  const locked=(await DB.getDoc("predsLocked",String(J)))||{};
+  const mPts={};
+  Object.entries(locked).forEach(([uid,pj])=>{
+    const s={p:0,n:0,g:0,t:0,ex:0};
+    Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return; const o=scorePred(pr,r); s.n++; s.p+=o.pts; if(o.g)s.g++; if(o.t)s.t++; if(o.ex)s.ex++; });
+    mPts[uid]=s;
+  });
+  const order=Object.entries(mPts).sort((a,b)=>b[1].p-a[1].p);
+  const podium=order.filter(([,s])=>s.p>0).slice(0,3).map(([u])=>u);
   const ops=[];
-  Object.values(S.teams).forEach(t=>{
-    if(!(t.id in tPts)) return;
-    const d=Object.assign({},t); delete d.id;
-    d.pts=Object.assign({},t.pts||{}); d.pts[J]=tPts[t.id];
-    d.res=Object.assign({},t.res||{}); d.res[J]={us:results[t.id].us,them:results[t.id].them,rival:(jd.fixtures||{})[t.id]?.rival||""};
-    ops.push({op:"set",col:"teams",id:t.id,data:d});
-  });
-  Object.entries(mPts).forEach(([uid,s])=>{
-    const m=S.managers[uid]; if(!m) return;
-    const byJ=Object.assign({},m.byJ||{}); byJ[J]=s.t;
-    const byP=Object.assign({},m.byP||{}); byP[J]=s.p;
-    ops.push({op:"set",col:"managers",id:uid,data:{byJ,byP,total:r1(Object.values(byJ).reduce((a,v)=>a+v,0))},merge:true});
-  });
-  ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign(jd,{n:J,status:"published",results,tPts,mPts,publishedAt:Date.now()})});
-  ops.push({op:"set",col:"config",id:"game",data:{jornada:J,mercado:"open"},merge:true});
+  Object.values(S.teams).forEach(t=>{ const r=results[t.id]; if(!r) return;
+    const d=Object.assign({},t); delete d.id; d.res=Object.assign({},t.res||{}); d.res[J]={us:r.us,them:r.them,rival:(jd.fixtures||{})[t.id]?.rival||""};
+    ops.push({op:"set",col:"teams",id:t.id,data:d}); });
+  Object.entries(mPts).forEach(([uid,s])=>{ const m=S.managers[uid]; if(!m) return;
+    const byJ=Object.assign({},m.byJ||{}); byJ[J]=s.p;
+    ops.push({op:"set",col:"managers",id:uid,data:{byJ,total:Object.values(byJ).reduce((a,v)=>a+v,0)},merge:true}); });
+  ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign(jd,{n:J,status:"published",results,mPts,podium,publishedAt:Date.now()})});
+  ops.push({op:"set",col:"config",id:"game",data:{jornada:J,estado:"open"},merge:true});
   return ops;
 }
-function undoPublishOps(){
+function undoOps(){
   const J=S.cfg.jornada, jd=S.jornadas[String(J)];
   if(!jd||jd.status!=="published") return null;
   const ops=[];
-  Object.values(S.teams).forEach(t=>{
-    if(!t.pts||t.pts[J]==null) return;
-    const d=Object.assign({},t); delete d.id;
-    d.pts=Object.assign({},t.pts); delete d.pts[J]; d.res=Object.assign({},t.res||{}); delete d.res[J];
-    ops.push({op:"set",col:"teams",id:t.id,data:d});
-  });
-  Object.entries(S.managers).forEach(([uid,m])=>{
-    if(!m.byJ||m.byJ[J]==null) return;
-    const d=Object.assign({},m); delete d.id;
-    d.byJ=Object.assign({},m.byJ); delete d.byJ[J]; d.byP=Object.assign({},m.byP||{}); delete d.byP[J];
-    d.total=r1(Object.values(d.byJ).reduce((a,v)=>a+v,0));
-    ops.push({op:"set",col:"managers",id:uid,data:d});
-  });
-  const nj=Object.assign({},jd,{status:"closed"}); delete nj.id; delete nj.tPts; delete nj.mPts; delete nj.publishedAt;
+  Object.values(S.teams).forEach(t=>{ if(!t.res||!t.res[J]) return; const d=Object.assign({},t); delete d.id; d.res=Object.assign({},t.res); delete d.res[J]; ops.push({op:"set",col:"teams",id:t.id,data:d}); });
+  Object.entries(S.managers).forEach(([uid,m])=>{ if(!m.byJ||m.byJ[J]==null) return; const d=Object.assign({},m); delete d.id; d.byJ=Object.assign({},m.byJ); delete d.byJ[J]; d.total=Object.values(d.byJ).reduce((a,v)=>a+v,0); ops.push({op:"set",col:"managers",id:uid,data:d}); });
+  const nj=Object.assign({},jd,{status:"closed"}); delete nj.id; delete nj.mPts; delete nj.podium; delete nj.publishedAt;
   ops.push({op:"set",col:"jornadas",id:String(J),data:nj});
-  ops.push({op:"set",col:"config",id:"game",data:{jornada:J-1,mercado:"closed"},merge:true});
+  ops.push({op:"set",col:"config",id:"game",data:{jornada:J-1,estado:"closed"},merge:true});
   return ops;
 }
-function ranking(j,kind){
-  const val=m=> kind==="porra" ? Object.values(m.byP||{}).reduce((a,v)=>a+v,0) : j ? (m.byJ||{})[j] : (m.total||0);
-  const arr=Object.entries(S.managers).map(([uid,m])=>({uid,m,pts:val(m)})).filter(x=>typeof x.pts==="number");
-  arr.sort((a,b)=>b.pts-a.pts||a.m.name.localeCompare(b.m.name));
+
+/* ── Clasificaciones e insignias ── */
+function ranking(opts){
+  opts=opts||{}; const j=opts.j;
+  let arr=Object.entries(S.managers).map(([uid,m])=>({uid,m,pts: j ? (m.byJ||{})[j] : (m.total||0)}));
+  if(j) arr=arr.filter(x=>typeof x.pts==="number");
+  if(opts.cat) arr=arr.filter(x=>catOfUser(x.m)===opts.cat);
+  arr.sort((a,b)=>(b.pts||0)-(a.pts||0)||a.m.name.localeCompare(b.m.name));
   let lp=null,lr=0; arr.forEach((x,i)=>{ if(x.pts!==lp){lr=i+1;lp=x.pts;} x.rank=lr; });
   return arr;
 }
-function suggestStars(t){
-  const pool=activeTeams().map(x=>({id:x.id,...teamStats(x)})).filter(x=>x.n>=2).sort((a,b)=>a.media-b.media);
-  const i=pool.findIndex(x=>x.id===t.id); if(i<0||pool.length<6) return null;
-  const q=i/(pool.length-1); return q<1/3?1:q<2/3?2:3;
+function badgesOf(uid){
+  const pub=published(); const res={pleno:0,clavado:0,racha:0,fiel:0,podio:0,ojo:0};
+  let run=0, best=0, jugadas=0, tramos=0;
+  pub.forEach(j=>{ const s=(j.mPts||{})[uid];
+    if(s&&s.n){ jugadas++; tramos+=s.t||0; if(s.n>=3&&s.g===s.n) res.pleno++; res.clavado+=s.ex||0;
+      if(s.g/s.n>=0.5){ run++; best=Math.max(best,run); } else run=0; }
+    else run=0;
+    if((j.podium||[]).includes(uid)) res.podio++; });
+  res.racha=Math.floor(best/3); res.fiel=Math.floor(jugadas/5); res.ojo=Math.floor(tramos/10);
+  return {res,run,jugadas,tramos};
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -532,45 +514,40 @@ function tbadge(t,size){
     <span class="tb1" style="font-size:${Math.round(s*.36)}px">${c.ab}</span><span class="tb2" style="font-size:${Math.round(s*.24)}px">${esc(t.gender)}</span></div>`;
 }
 function header(title,sub,right){
-  return `<header class="header"><div class="hrow">
-    <img class="hlogo" src="assets/logo.svg" alt="">
-    <div style="flex:1;min-width:0"><div class="htitle">${title}</div>${sub?`<div class="hsub">${sub}</div>`:""}</div>
-    ${right||""}</div></header>`;
+  return `<header class="header"><div class="hrow"><img class="hlogo" src="assets/logo.svg" alt="">
+    <div style="flex:1;min-width:0"><div class="htitle">${title}</div>${sub?`<div class="hsub">${sub}</div>`:""}</div>${right||""}</div></header>`;
 }
 function navBar(){
-  const it=[["equipo","🏀","Equipo"],["mercado","🔁","Mercado"],["porra","🎯","Porra"],["clasif","🏆","Clasif."]];
+  const it=[["jornada","🎯","Jornada"],["clasif","🏆","Ranking"],["resultados","📅","Resultados"],["yo","👤","Yo"]];
   if(isAdmin()) it.push(["admin","⚙️","Admin"]);
   return `<nav class="nav">${it.map(([k,i,l])=>`<button class="nb ${S.tab===k?"on":""}" onclick="go('${k}')"><span class="ni">${i}</span><span>${l}</span></button>`).join("")}</nav>`;
 }
-function marketBanner(){
-  if(S.cfg.mercado==="open") return `<div class="banner g">🟢 <div><b>Mercado abierto</b> · jornada ${jOpen()}. Ficha, elige capitán y haz tu porra antes del cierre.</div></div>`;
-  return `<div class="banner a">🔒 <div><b>Mercado cerrado</b> · se está jugando la jornada ${jOpen()}. Plantilla y porra fijadas.</div></div>`;
+function stateBanner(){
+  if(isOpen()) return `<div class="banner g">🟢 <div><b>Pronósticos abiertos</b> · jornada ${jOpen()}. Se cierran antes del primer partido.</div></div>`;
+  return `<div class="banner a">🔒 <div><b>Pronósticos cerrados</b> · se está jugando la jornada ${jOpen()}. ¡A animar!</div></div>`;
 }
-function fxLine(tid,J){
-  const jd=J?S.jornadas[String(J)]:curJ(); const f=jd&&jd.fixtures&&jd.fixtures[tid];
-  if(!f) return `<span class="muted">Sin partido esta jornada</span>`;
-  return `${f.home===false?"@":"vs"} <b style="color:var(--tx)">${esc(f.rival||"Rival")}</b>${f.when?` · ${esc(f.when)}`:""}`;
-}
+function fxText(f){ return `${f.home===false?"@":"vs"} <b style="color:var(--tx)">${esc(f.rival||"Rival")}</b>${f.when?` · ${esc(f.when)}`:""}`; }
 function barsHtml(entries){
   if(!entries.length) return `<div class="tiny" style="padding:8px 2px">Todavía no hay jornadas publicadas.</div>`;
-  const max=Math.max(1,...entries.map(e=>Math.abs(e.v??0)));
-  return `<div class="bars">${entries.map(e=>{ const nj=e.v==null; const h=nj?4:Math.max(4,Math.abs(e.v)/max*62);
-    return `<div class="bar"><div class="bv">${nj?"–":fmt1(e.v)}</div><div class="b ${nj?"nj":""}" style="height:${h}px"></div><div class="bl">${e.l}</div></div>`; }).join("")}</div>`;
+  const max=Math.max(1,...entries.map(e=>e.v??0));
+  return `<div class="bars">${entries.map(e=>{ const nj=e.v==null; const h=nj?4:Math.max(4,(e.v)/max*62);
+    return `<div class="bar"><div class="bv">${nj?"–":e.v}</div><div class="b ${nj?"nj":""}" style="height:${h}px"></div><div class="bl">${e.l}</div></div>`; }).join("")}</div>`;
 }
 function openModal(html,top){
   const lvl=top?" top":""; const w=document.createElement("div"); w.dataset.top=top?"1":"0";
   w.innerHTML=`<div class="ov${lvl}" onclick="closeModal(${top?1:0})"></div><div class="modal${lvl}"><div class="mhandle"></div>${html}</div>`;
   $("mroot").appendChild(w);
 }
-function closeModal(top){
-  const ws=[...$("mroot").children];
-  if(top){ const t=ws.filter(w=>w.dataset.top==="1").pop(); t&&t.remove(); } else $("mroot").innerHTML="";
-}
+function closeModal(top){ const ws=[...$("mroot").children]; if(top){ const t=ws.filter(w=>w.dataset.top==="1").pop(); t&&t.remove(); } else $("mroot").innerHTML=""; }
 function confirmModal(title,msg,ok,fn,danger){
   window.__cf=fn;
   openModal(`<div class="mtitle">${title}</div><div class="msub">${msg}</div>
     <button class="${danger?"btn-d":"btn-p"}" onclick="closeModal(1);window.__cf()">${ok}</button>
     <button class="btn-s" onclick="closeModal(1)">Cancelar</button>`,true);
+}
+async function copyText(txt,okMsg){
+  try{ await navigator.clipboard.writeText(txt); toast(okMsg||"📋 Copiado"); }
+  catch(e){ openModal(`<div class="mtitle">Copiar texto</div><textarea class="fi" id="cp_txt" style="height:260px;font-size:13px" onfocus="this.select()">${esc(txt)}</textarea><button class="btn-s" onclick="closeModal()">Cerrar</button>`); }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -581,33 +558,36 @@ function render(){
   const root=$("root");
   if(!S.user){ root.innerHTML=authScreen(); return; }
   if(!Object.values(S.ready).every(Boolean)){ root.innerHTML=`<div class="empty" style="padding-top:40vh">Cargando…</div>`; return; }
-  if(!me()){ root.innerHTML=`<div class="auth"><div class="empty">No se encuentra tu cuenta.<br><button class="btn-s" onclick="DB.auth.logout()">Salir</button></div></div>`; return; }
-  const scr={equipo:equipoScreen,mercado:mercadoScreen,porra:porraScreen,clasif:clasifScreen,admin:adminScreen}[S.tab]||equipoScreen;
-  root.innerHTML=scr()+navBar();
+  if(!me()){ root.innerHTML=`<div class="auth"><div class="empty">No se encuentra la cuenta.<br><button class="btn-s" onclick="DB.auth.logout()">Salir</button></div></div>`; return; }
+  const scr={jornada:jornadaScreen,clasif:clasifScreen,resultados:resultadosScreen,yo:yoScreen,admin:adminScreen}[S.tab]||jornadaScreen;
+  const y=window.scrollY; root.innerHTML=scr()+navBar(); window.scrollTo(0,y);
 }
 
-/* ── Login / registro ── */
+/* ── Alta / entrada ── */
 function authScreen(){
   const reg=S.authTab==="reg";
+  const teamOpts=activeTeams().map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
   return `<div class="auth">
     <img class="auth-logo" src="assets/logo.svg" alt="">
-    <div class="auth-t">SUPER<span>MANAGER</span></div>
-    <div class="auth-s">Club Baloncesto Jaca · de alevines a senior · ${esc(S.cfg.season)}</div>
-    ${DEMO?`<div class="demo">🧪 <b>Modo demo</b>: equipos y datos de ejemplo guardados solo en este navegador. Código del club: <b>DEMO</b>. En la demo todos son admin.</div>`:""}
+    <div class="auth-t">PRONÓSTICOS <span>CBJ</span></div>
+    <div class="auth-s">El juego de todo el Club Baloncesto Jaca · ${esc(S.cfg.season)}</div>
+    ${DEMO?`<div class="demo">🧪 <b>Modo demo</b>: equipos y resultados de ejemplo, guardados solo en este navegador. Código del club: <b>DEMO</b>. En la demo todas las cuentas son admin.</div>`:""}
     <div class="seg" style="margin-bottom:16px">
       <button class="${!reg?"on":""}" onclick="S.authTab='login';render()">Entrar</button>
-      <button class="${reg?"on":""}" onclick="S.authTab='reg';render()">Crear mi cuenta</button>
+      <button class="${reg?"on":""}" onclick="S.authTab='reg';render()">Crear cuenta</button>
     </div>
-    <div class="fg"><label class="fl" for="a_nick">Apodo</label><input class="fi" id="a_nick" autocomplete="username" maxlength="20" placeholder="Ej. TripleDeOroel"></div>
-    ${reg?`<div class="fg"><label class="fl" for="a_team">Nombre de tu equipo</label><input class="fi" id="a_team" maxlength="28" placeholder="Ej. Los del Rapitán"></div>`:""}
+    <div class="fg"><label class="fl" for="a_nick">Apodo</label><input class="fi" id="a_nick" autocomplete="username" maxlength="18" placeholder="Ej. Triplista23">
+      ${reg?`<div class="tiny" style="margin-top:5px">Es lo que verá todo el club. <b style="color:var(--tx)">No pongas tu nombre real.</b></div>`:""}</div>
+    ${reg?`<div class="fg"><label class="fl" for="a_team">Tu equipo del club</label><select class="fi" id="a_team"><option value="">No juego en el club (familia, amigos…)</option>${teamOpts}</select>
+      <div class="tiny" style="margin-top:5px">Compites también con los de tu categoría. El partido de tu equipo no se pronostica: se anima.</div></div>`:""}
     <div class="frow">
       <div class="fg"><label class="fl" for="a_pin">PIN (4 cifras)</label><input class="fi pin" id="a_pin" inputmode="numeric" maxlength="4" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="••••"></div>
-      ${reg?`<div class="fg"><label class="fl" for="a_code">Código del club</label><input class="fi" id="a_code" autocapitalize="characters" placeholder="${DEMO?"DEMO":"Te lo da el club"}"></div>`:""}
+      ${reg?`<div class="fg"><label class="fl" for="a_code">Código del club</label><input class="fi" id="a_code" autocapitalize="characters" placeholder="${DEMO?"DEMO":"Lo da el club"}"></div>`:""}
     </div>
-    ${reg?`<div class="tgl" id="a_age" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:2px 0 14px">
-      <div class="box"></div><div style="font-size:13px;line-height:1.45">Tengo 14 años o más, o mis padres me dejan jugar.<div class="tiny">No hace falta tu nombre real: juega con tu apodo.</div></div></div>`:""}
-    <button class="btn-p" id="a_btn" onclick="doAuth()">${reg?"Crear cuenta y empezar":"Entrar"}</button>
-    <div class="tiny center" style="margin-top:18px">v${APP_VERSION}</div>
+    ${reg?`<div class="tgl" id="a_ok" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:2px 0 14px">
+      <div class="box"></div><div style="font-size:13px;line-height:1.45">Soy padre, madre o tutor, o tengo su permiso para jugar.</div></div>`:""}
+    <button class="btn-p" id="a_btn" onclick="doAuth()">${reg?"Crear cuenta":"Entrar"}</button>
+    <div class="tiny center" style="margin-top:18px;line-height:1.6">Solo se guarda el apodo y el equipo. Sin dinero ni premios: se juega por diversión.<br>v${APP_VERSION}</div>
   </div>`;
 }
 async function doAuth(){
@@ -615,210 +595,156 @@ async function doAuth(){
   const nick=$("a_nick").value.trim(), pin=$("a_pin").value.trim();
   if(nick.length<3) return toast("El apodo necesita al menos 3 letras",true);
   if(!/^\d{4}$/.test(pin)) return toast("El PIN son 4 cifras",true);
-  if(reg&&!$("a_age").classList.contains("on")) return toast("Marca la casilla de edad para continuar",true);
+  if(reg&&!$("a_ok").classList.contains("on")) return toast("Marca la casilla del permiso para continuar",true);
   const btn=$("a_btn"); btn.disabled=true;
   try{
-    if(reg) await DB.auth.register({nick,pin,code:$("a_code").value,teamName:$("a_team").value});
+    if(reg) await DB.auth.register({nick,pin,code:$("a_code").value,teamId:$("a_team").value||null});
     else await DB.auth.login({nick,pin});
   }catch(e){ toast(e.message,true); btn.disabled=false; }
 }
 
-/* ── Mi equipo ── */
-function equipoScreen(){
-  const m=me(); const closed=S.cfg.mercado!=="open";
-  const lu = closed && curJ()?.lineups?.[S.user.uid];
-  const roster = lu ? lu.roster : (m.roster||[]); const cap = lu ? lu.captain : m.captain;
-  const rk=ranking(); const my=rk.find(x=>x.uid===S.user.uid);
-  const ch=changesInfo(m); const lp=lastPub(); const pub=published();
-  const missing=S.cfg.plantilla-(m.roster||[]).length;
-  const nPred=Object.keys(((m.preds||{})[String(jOpen())])||{}).length;
-  const nFx=Object.keys(curJ()?.fixtures||{}).length;
-  const lastS = lp && lp.mPts && lp.mPts[S.user.uid];
-  return header("Mi equipo",`Jornada ${jOpen()}${closed?" en juego":""} · ${esc(S.cfg.season)}`,`<button class="bbtn" onclick="openProfile()" title="Perfil">👤</button>`)+
-  `<div class="content">
-    ${marketBanner()}
-    <div class="card"><div class="accent"></div><div class="hero">
-      <div class="hero-top">
-        <div style="min-width:0"><div class="hero-name">${esc(m.teamName)}</div><div class="tiny" style="margin-top:4px">@${esc(m.name)}</div></div>
-        <div style="text-align:right"><div class="sval">${fmt1(m.total||0)}</div><div class="slbl">puntos</div></div>
-      </div>
-      <div class="grid4">
-        <div class="sbox kv"><div class="k">Posición</div><div class="v">${my?my.rank+"º":"—"} <span class="tiny">de ${rk.length}</span></div></div>
-        <div class="sbox kv"><div class="k">Estrellas libres</div><div class="v"><span style="color:#fbbf24">★</span> ${starsLeft(m)} <span class="tiny">de ${S.cfg.estrellas}</span></div></div>
-        <div class="sbox kv"><div class="k">Última jornada</div><div class="v">${lastS?fmt1(lastS.t)+` <span class="tiny">${fmt1(lastS.f)} eq · ${lastS.p} porra</span>`:"—"}</div></div>
-        <div class="sbox kv"><div class="k">Cambios</div><div class="v">${ch.unlimited?"Libres":ch.left+" <span class='tiny'>de "+S.cfg.cambios+"</span>"}</div></div>
-      </div>
-    </div></div>
-    ${!closed&&missing>0?`<div class="banner o">⚠️ <div>Te ${missing===1?"falta <b>1 equipo</b>":"faltan <b>"+missing+" equipos</b>"}. <a class="lnk" onclick="go('mercado')">Ir al mercado</a></div></div>`:""}
-    ${!closed&&nFx&&nPred<nFx?`<div class="banner o">🎯 <div>Porra: llevas <b>${nPred} de ${nFx}</b> partidos pronosticados. <a class="lnk" onclick="go('porra')">Completar</a></div></div>`:""}
-    <div class="sec"><span>${closed?"Plantilla fijada · J"+jOpen():"Tu plantilla"}</span><span class="muted" style="letter-spacing:0;text-transform:none;font-weight:600">${roster.length}/${S.cfg.plantilla} · © puntúa ×${S.cfg.capMult}</span></div>
-    <div class="card">${roster.map(tid=>{ const t=S.teams[tid]; if(!t) return ""; const st=teamStats(t);
-      return `<div class="row ${tid===cap?"cap":""}" onclick="openTeam('${tid}')">${tbadge(t)}
-        <div class="rmain"><div class="rname">${esc(t.name)} ${tid===cap?'<span class="capb">© CAPITÁN</span>':""}</div><div class="rsub">${fxLine(tid)}</div></div>
-        <div class="rnum"><div class="v">${st.last!=null?fmt1(st.last):"–"}</div><div class="l">últ. J</div></div></div>`; }).join("")}
-      ${Array.from({length:Math.max(0,S.cfg.plantilla-roster.length)}).map(()=> closed
-        ? `<div class="row" style="cursor:default"><div class="tbadge empty-b">—</div><div class="rmain"><div class="rname muted">Hueco vacío</div><div class="rsub">Puntúa 0</div></div></div>`
-        : `<div class="row" onclick="go('mercado')"><div class="tbadge empty-b">＋</div><div class="rmain"><div class="rname" style="color:var(--orange)">Fichar equipo</div><div class="rsub">Te quedan ${starsLeft(m)} ★</div></div></div>`).join("")}
-    </div>
-    <div class="sec"><span>Puntos por jornada</span></div>
-    <div class="card" style="padding:10px 12px">${barsHtml(pub.slice(-8).map(j=>({l:"J"+j.n,v:(m.byJ||{})[j.n]??null})))}</div>
-  </div>`;
-}
-function openProfile(){
-  const m=me();
-  openModal(`<div class="mtitle">Tu cuenta</div><div class="msub">@${esc(m.name)}${isAdmin()?" · <span class='pill o'>Admin</span>":""}</div>
-    <div class="fg"><label class="fl" for="pf_team">Nombre del equipo</label><input class="fi" id="pf_team" maxlength="28" value="${esc(m.teamName)}"></div>
-    <button class="btn-p" onclick="saveProfile()">Guardar</button>
-    <button class="btn-s" onclick="openRules()">📖 Reglas del juego</button>
-    <button class="btn-s" onclick="closeModal();DB.auth.logout()">Cerrar sesión</button>
-    ${DEMO?`<button class="btn-d" onclick="DB.reset()">Reiniciar datos de la demo</button>`:""}
-    <div class="tiny center mt12">SuperManager CBJ v${APP_VERSION}</div>`);
-}
-async function saveProfile(){
-  const v=$("pf_team").value.trim(); if(!v) return toast("Pon un nombre",true);
-  await DB.batch([{op:"set",col:"managers",id:S.user.uid,data:{teamName:v},merge:true}]); closeModal(); toast("Guardado");
-}
-function openRules(){
-  const c=S.cfg;
-  openModal(`<div class="mtitle">Reglas</div><div class="msub rules">
-    <b>1 · Fantasy de equipos.</b> Fichas <b>${c.plantilla} equipos</b> del club, de alevines a senior. Cada equipo vale de ★ a ★★★ según su nivel y tienes <b>${c.estrellas} ★</b>. Uno es tu <b>capitán</b> y puntúa <b>×${c.capMult}</b>.<br>
-    Cada equipo suma según su resultado del fin de semana:<br>
-    ${c.puntos.map((t,i)=>`&nbsp;&nbsp;· ${tierLabel(i)}: <b>${t.pts} pts</b>`).join("<br>")}<br>
-    Si no juega esa jornada, suma 0. Mira el calendario antes de elegir capitán.<br><br>
-    <b>2 · Porra.</b> Pronostica cada partido del club: quién gana (<b>+${c.porraGanador}</b>) y por cuánto: 1-5, 6-14 o 15+ (<b>+${c.porraTramo}</b> más si aciertas también eso).<br><br>
-    <b>Mercado.</b> Se cierra antes de los partidos del fin de semana: plantilla, capitán y porra quedan fijados. Se reabre al publicar los resultados. Hasta la 1ª jornada los fichajes son libres; después, ${c.cambios} por jornada (vender y cambiar capitán no cuentan).<br><br>
-    <b>Juego limpio.</b> Aquí no se puntúa a ningún jugador: solo resultados de equipo. Ánimo a todos los equipos del CBJ.
-  </div><button class="btn-s" onclick="closeModal(1)">Cerrar</button>`,true);
-}
-
-/* ── Ficha de equipo ── */
-function openTeam(tid){
-  const t=S.teams[tid]; if(!t) return; const m=me(); const st=teamStats(t);
-  const owned=(m.roster||[]).includes(tid); const open=S.cfg.mercado==="open";
-  const hist=published().filter(j=>t.res&&t.res[j.n]).slice(-6).reverse();
-  let action="";
-  if(owned){
-    action = open ? `${m.captain!==tid?`<button class="btn-p" onclick="setCaptain('${tid}')">© Hacer capitán (×${S.cfg.capMult})</button>`:`<div class="banner o mt12">© Es tu capitán: puntúa ×${S.cfg.capMult}.</div>`}
-      <button class="btn-d" onclick="sell('${tid}')">Vender (liberas ${t.stars} ★)</button>` : `<div class="banner a mt12">🔒 Mercado cerrado.</div>`;
-  } else {
-    const c=buyCheck(tid);
-    action=`<button class="btn-p" ${c.ok?"":"disabled"} onclick="buy('${tid}')">Fichar · ${starsTxt(t.stars)}</button>${c.ok?"":`<div class="tiny center mt8">${esc(c.r)}</div>`}`;
-  }
-  openModal(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">${tbadge(t,52)}
-      <div style="min-width:0"><div class="mtitle" style="margin:0">${esc(t.name)}</div><div class="rsub" style="margin-top:4px">${starsHtml(t.stars,15)} · ${Math.round(ownersPct(tid)*100)}% lo tienen</div></div></div>
-    <div class="sbox" style="margin-bottom:10px"><div class="k fl" style="margin:0 0 4px">Esta jornada</div><div style="font-size:14px">${fxLine(tid)}</div></div>
-    <div class="grid4" style="margin-top:0">
-      <div class="sbox kv"><div class="k">Media</div><div class="v">${st.n?fmt1(r1(st.media)):"—"} <span class="tiny">pts/J</span></div></div>
-      <div class="sbox kv"><div class="k">Balance</div><div class="v">${st.w}–${st.l} <span class="tiny">G–P</span></div></div>
-    </div>
-    <div class="sec">Últimos resultados</div>
-    <div class="card">${hist.map(j=>{const r=t.res[j.n]; const d=r.us-r.them;
-      return `<div class="arow"><div class="rank" style="font-size:14px">J${j.n}</div><div class="rmain"><div class="rname" style="font-weight:600">${esc(r.rival||"Rival")}</div></div>
-        <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:18px">${r.us}-${r.them}</div><div class="rnum" style="min-width:44px"><div class="v">${t.pts[j.n]}</div><div class="l">pts</div></div></div>`;}).join("")||`<div class="empty">Aún sin resultados.</div>`}</div>
-    ${action}<button class="btn-s" onclick="closeModal()">Cerrar</button>`);
-}
-
-/* ── Mercado ── */
-function mercadoScreen(){
-  const m=me(); const f=S.mkt; const ch=changesInfo(m);
-  const cats=CAT_ORDER.filter(c=>activeTeams().some(t=>t.cat===c));
-  const chip=(v,l)=>`<button class="chip ${f.cat===v?"on":""}" onclick="S.mkt.cat='${v}';render()">${l}</button>`;
-  let arr=activeTeams().filter(t=>f.cat==="all"||t.cat===f.cat);
-  const st=Object.fromEntries(arr.map(t=>[t.id,teamStats(t)]));
-  const key={media:t=>st[t.id].media,stars:t=>t.stars,last:t=>st[t.id].last??-99,own:t=>ownersPct(t.id)}[f.sort];
-  arr.sort((a,b)=>key(b)-key(a)||teamSort(a,b));
-  return header("Mercado",`${starsLeft(m)} ★ libres · ${(m.roster||[]).length}/${S.cfg.plantilla} equipos · ${ch.unlimited?"fichajes libres":ch.left+" fichaje"+(ch.left===1?"":"s")}`)+
-  `<div class="content">
-    ${marketBanner()}
-    <div class="chips" style="margin-bottom:10px">${chip("all","Todos")}${cats.map(c=>chip(c,c)).join("")}</div>
-    <div class="sec" style="margin-top:4px"><span>${arr.length} equipos</span>
-      <select class="fi" id="mk_sort" style="width:auto;min-height:34px;padding:6px 10px;font-size:13px" onchange="S.mkt.sort=this.value;render()">
-        ${[["media","Media de puntos"],["stars","Estrellas"],["last","Última jornada"],["own","% mánagers"]].map(([v,l])=>`<option value="${v}" ${f.sort===v?"selected":""}>${l}</option>`).join("")}
-      </select></div>
-    <div class="card">${arr.map(t=>{ const s=st[t.id]; const owned=(m.roster||[]).includes(t.id); const c=owned?null:buyCheck(t.id);
-      return `<div class="row" onclick="openTeam('${t.id}')">${tbadge(t)}
-        <div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${starsHtml(t.stars,12)} <span>Media ${s.n?fmt1(r1(s.media)):"—"}</span><span>· ${s.w}–${s.l}</span></div>
-          <div class="rsub" style="margin-top:3px">${fxLine(t.id)}</div></div>
-        <div style="flex-shrink:0">${owned?`<span class="pill o">${m.captain===t.id?"© Capitán":"Tuyo"}</span>`:`<button class="btn-sm" ${c.ok?"":"disabled"} onclick="event.stopPropagation();buy('${t.id}')">Fichar</button>`}</div>
-      </div>`; }).join("")||`<div class="empty">Todavía no hay equipos. El admin los da de alta.</div>`}</div>
-  </div>`;
-}
-
-/* ── Porra ── */
-function porraScreen(){
-  const m=me(); const open=S.cfg.mercado==="open"; const J=jOpen(); const jd=curJ();
+/* ── Pronósticos de la jornada ── */
+function jornadaScreen(){
+  const m=me(); const open=isOpen(); const J=jOpen(); const jd=curJ();
   const fx=Object.entries(jd?.fixtures||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
-  const mine = open ? ((m.preds||{})[String(J)]||{}) : ((jd?.preds||{})[S.user.uid]||{});
-  const lp=lastPub(); const lpPreds=lp&&(lp.preds||{})[S.user.uid]||{};
-  const done=fx.filter(([tid])=>mine[tid]&&mine[tid].w).length;
-  const card=([tid,f])=>{ const t=S.teams[tid]; const p=mine[tid]||{};
-    const b=(fld,val,lbl)=>`<button class="pick ${p[fld]===val?"on":""} ${fld==="w"?(val==="W"?"w":"l"):""}" ${open?`onclick="setPred('${tid}','${fld}',${typeof val==="string"?`'${val}'`:val})"`:"disabled"}>${lbl}</button>`;
+  const mine=fx.filter(([tid])=>tid!==m.teamId);
+  const done=mine.filter(([tid])=>(myPred(J,tid)||{}).w).length;
+  const P=S.cfg.pts;
+  const card=([tid,f])=>{
+    const t=S.teams[tid];
+    if(tid===m.teamId) return `<div class="pcard own"><div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)} <span class="pill o">Tu equipo</span></div><div class="rsub">${fxText(f)}</div></div></div>
+      <div class="owntxt">💪 Este no se pronostica: <b>¡se anima!</b></div></div>`;
+    const p=myPred(J,tid)||{}; const agg=!open&&jd.agg&&jd.agg[tid];
+    const dis=open?"":"disabled";
+    const bw=(w,l)=>`<button class="pick ${w==="W"?"w":"l"} ${p.w===w?"on":""}" ${dis} onclick="pickW('${tid}','${w}')">${l}</button>`;
+    const bt=k=>`<button class="pick ${p.t===k?"on":""}" ${dis} onclick="pickT('${tid}',${k})">${TRAMOS[k]}</button>`;
+    const full=p.w&&p.t; const hasSc=typeof p.us==="number";
     return `<div class="pcard">
-      <div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${f.home===false?"@":"vs"} <b style="color:var(--tx)">${esc(f.rival||"Rival")}</b>${f.when?" · "+esc(f.when):""}</div></div>
-        ${p.w?`<span class="pill ${p.t?"g":"o"}">${p.t?"✓":"½"}</span>`:""}</div>
-      <div class="picks">${b("w","W","Gana CBJ")}${b("w","L","Pierde CBJ")}</div>
-      <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(k=>b("t",k,"Por "+TRAMOS[k])).join("")}</div>
+      <div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${fxText(f)}</div></div>
+        ${p.w?`<span class="pill ${full?"g":"o"}">${full?"✓ Listo":"Falta diferencia"}</span>`:""}</div>
+      <div class="plbl">¿Quién gana? <span>+${P.ganador}</span></div>
+      <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc((f.rival||"el rival").split(" ").slice(0,2).join(" ")))}</div>
+      <div class="plbl ${p.w?"":"dim"}">¿Por cuántos puntos? <span>+${P.tramo}</span></div>
+      <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(bt).join("")}</div>
+      <div class="plbl">Marcador exacto <span>+${P.exacto} · opcional</span></div>
+      <div class="score"><div class="sc"><div class="tiny">CBJ</div><input class="fi vin" id="sc_us_${tid}" inputmode="numeric" maxlength="3" placeholder="–" ${dis} value="${hasSc?p.us:""}" onchange="setScore('${tid}')"></div>
+        <div class="muted d" style="font-size:22px">–</div>
+        <div class="sc"><div class="tiny">${esc((f.rival||"Rival").slice(0,12))}</div><input class="fi vin" id="sc_th_${tid}" inputmode="numeric" maxlength="3" placeholder="–" ${dis} value="${hasSc?p.them:""}" onchange="setScore('${tid}')"></div></div>
+      ${agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} del club dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
     </div>`; };
-  const lastBlock = lp ? (()=>{ const rows=Object.entries(lp.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
-    const tot=(lp.mPts&&lp.mPts[S.user.uid]||{}).p||0;
-    return `<div class="sec"><span>Tu porra de la J${lp.n}</span><span class="pill o">${tot} pts</span></div><div class="card">${rows.map(([tid,r])=>{ const t=S.teams[tid]; const pr=lpPreds[tid]; const pts=porraPts(pr,r); const d=r.us-r.them;
-      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${pr&&pr.w?`Dijiste: ${pr.w==="W"?"gana":"pierde"}${pr.t?" por "+TRAMOS[pr.t]:""}`:"Sin pronóstico"}</div></div>
-        <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div><div class="rnum" style="min-width:36px"><div class="v ${pts?"":"muted"}">${pts?"+"+pts:"0"}</div></div></div>`; }).join("")}</div>`; })() : "";
-  return header("Porra",`Jornada ${J} · ${open?done+" de "+fx.length+" pronosticados":"pronósticos cerrados"}`)+
+  return header(`Jornada ${J}`,open?`${done} de ${mine.length} pronosticados`:"Pronósticos cerrados")+
   `<div class="content">
-    ${marketBanner()}
-    <div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Acertar quién gana: <b style="color:var(--tx)">+${S.cfg.porraGanador}</b>. Acertar además la diferencia: <b style="color:var(--tx)">+${S.cfg.porraTramo}</b>.</div>
-    ${fx.length?fx.map(card).join(""):`<div class="card"><div class="empty">El club todavía no ha publicado los partidos de la jornada ${J}.</div></div>`}
-    ${lastBlock}
+    ${stateBanner()}
+    ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Nadie ve tus pronósticos: solo tus puntos. Acertar muy cerca el marcador (±3 cada equipo) da <b style="color:var(--tx)">+${P.cerca}</b>.</div>`+fx.map(card).join("")
+      :`<div class="card"><div class="empty">El club todavía no ha publicado los partidos de la jornada ${J}.<br>Vuelve en unos días.</div></div>`}
   </div>`;
 }
 
 /* ── Clasificación ── */
 function clasifScreen(){
-  const pub=published(); const c=S.cls;
-  if(c.mode==="jornada"&&(!c.j||!S.jornadas[String(c.j)])&&pub.length) c.j=pub[pub.length-1].n;
-  const rk = c.mode==="general"?ranking(): c.mode==="porra"?ranking(null,"porra"): (c.j?ranking(c.j):[]);
+  const m=me(); const pub=published(); const c=S.cls; const myCat=catOfUser(m);
+  if(c.mode==="jornada"&&(!c.j||!S.jornadas[String(c.j)]||S.jornadas[String(c.j)].status!=="published")&&pub.length) c.j=pub[pub.length-1].n;
+  const rk = c.mode==="cat" ? ranking({cat:myCat}) : c.mode==="jornada" ? (c.j?ranking({j:c.j}):[]) : ranking();
   const jd = c.mode==="jornada"&&c.j ? S.jornadas[String(c.j)] : null;
   const seg=(k,l)=>`<button class="${c.mode===k?"on":""}" onclick="S.cls.mode='${k}';render()">${l}</button>`;
-  return header("Clasificación",`${Object.keys(S.managers).length} mánagers · ${pub.length} jornada${pub.length===1?"":"s"}`,`<button class="bbtn" onclick="shareRanking()" title="Copiar para WhatsApp">📤</button>`)+
+  return header("Clasificación",`${Object.keys(S.managers).length} jugadores · ${pub.length} jornada${pub.length===1?"":"s"}`)+
   `<div class="content">
-    <div class="seg" style="margin-bottom:12px">${seg("general","General")}${seg("jornada","Jornada")}${seg("porra","Porra")}</div>
+    <div class="seg" style="margin-bottom:12px">${seg("general","General")}${myCat?seg("cat",myCat):""}${seg("jornada","Jornada")}</div>
     ${c.mode==="jornada"?(pub.length?`<div class="chips" style="margin-bottom:12px">${pub.slice().reverse().map(x=>`<button class="chip ${c.j===x.n?"on":""}" onclick="S.cls.j=${x.n};render()">J${x.n}</button>`).join("")}</div>`:`<div class="card"><div class="empty">Aún no hay jornadas publicadas.</div></div>`):""}
-    ${jd?resultsCard(jd):""}
-    ${(c.mode!=="jornada"||pub.length)?`<div class="card">${rk.map(x=>{ const br=jd&&jd.mPts&&jd.mPts[x.uid];
-      return `<div class="row ${x.uid===S.user.uid?"me":""}" onclick="openManager('${x.uid}')">
+    ${jd?podiumHtml(jd):""}
+    ${(c.mode!=="jornada"||pub.length)?`<div class="card">${rk.map(x=>{ const t=x.m.teamId&&S.teams[x.m.teamId]; const s=jd&&jd.mPts&&jd.mPts[x.uid];
+      return `<div class="row ${x.uid===S.user.uid?"me":""}" style="cursor:default">
         <div class="rank ${x.rank<=3?"r"+x.rank:""}">${x.rank}</div>
-        <div class="rmain"><div class="rname">${esc(x.m.teamName)}</div><div class="rsub">@${esc(x.m.name)}${br?` · ${fmt1(br.f)} equipos + ${br.p} porra`:""}</div></div>
-        <div class="rnum"><div class="v">${fmt1(x.pts||0)}</div><div class="l">pts</div></div></div>`; }).join("")||`<div class="empty">Nadie todavía.</div>`}</div>`:""}
+        ${t?tbadge(t,30):`<div class="tbadge fam" style="width:30px;height:30px">👪</div>`}
+        <div class="rmain"><div class="rname">${esc(x.m.name)}</div><div class="rsub">${s?`${s.g}/${s.n} ganadores${s.ex?" · "+s.ex+" exacto"+(s.ex>1?"s":""):""}`:t?esc(t.name):"Familia y amigos"}</div></div>
+        <div class="rnum"><div class="v">${x.pts||0}</div><div class="l">pts</div></div></div>`; }).join("")||`<div class="empty">${c.mode==="cat"?"Nadie de tu categoría todavía.":"Nadie todavía."}</div>`}</div>`:""}
   </div>`;
 }
-function resultsCard(jd){
-  const rows=Object.entries(jd.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
-  if(!rows.length) return "";
-  return `<div class="sec"><span>Resultados J${jd.n}</span></div><div class="card" style="margin-bottom:14px">${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them;
-    return `<div class="arow" onclick="openTeam('${tid}')" style="cursor:pointer">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc((jd.fixtures||{})[tid]?.rival||"")}</div></div>
-      <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div><div class="rnum" style="min-width:40px"><div class="v">${(jd.tPts||{})[tid]??"–"}</div><div class="l">pts</div></div></div>`; }).join("")}</div>`;
+function podiumHtml(jd){
+  const pod=(jd.podium||[]).map(u=>({u,m:S.managers[u],s:(jd.mPts||{})[u]})).filter(x=>x.m);
+  if(!pod.length) return "";
+  pod.forEach(x=>x.medal=pod.filter(y=>y.s.p>x.s.p).length);
+  const order=[1,0,2].filter(i=>pod[i]);
+  return `<div class="card podium"><div class="accent"></div><div style="padding:14px 14px 12px">
+    <div class="sec" style="margin:0 0 10px"><span>Podio de la jornada ${jd.n}</span><button class="btn-sm ghost" onclick="sharePodium(${jd.n})">📤 Compartir</button></div>
+    <div class="pod">${order.map(i=>{ const x=pod[i]; return `<div class="pstep p${i+1}"><div class="pmedal">${["🥇","🥈","🥉"][x.medal]}</div><div class="pname">${esc(x.m.name)}</div><div class="ppts">${x.s.p} pts</div><div class="pblock"></div></div>`; }).join("")}</div>
+  </div></div>`;
 }
-function openManager(uid){
-  const m=S.managers[uid]; if(!m) return;
-  const closedJ = S.cfg.mercado!=="open" ? curJ() : null; const lp=lastPub();
-  const src = closedJ&&closedJ.lineups&&closedJ.lineups[uid] ? {j:closedJ,lu:closedJ.lineups[uid],live:true}
-            : lp&&lp.lineups&&lp.lineups[uid] ? {j:lp,lu:lp.lineups[uid],live:false} : null;
+function sharePodium(n){
+  const jd=S.jornadas[String(n)]; const pod=(jd.podium||[]).map(u=>({m:S.managers[u],s:jd.mPts[u]})).filter(x=>x.m);
+  const res=Object.entries(jd.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]))
+    .map(([tid,r])=>`${r.us>r.them?"✅":"❌"} ${S.teams[tid].name} ${r.us}-${r.them} ${jd.fixtures?.[tid]?.rival||""}`).join("\n");
+  const txt=`🏀 *Pronósticos CBJ · Jornada ${n}*\n\n🏆 *Podio*\n${pod.map(x=>`${["🥇","🥈","🥉"][pod.filter(y=>y.s.p>x.s.p).length]} ${x.m.name} — ${x.s.p} pts`).join("\n")}\n\n📋 *Resultados del club*\n${res}\n\n¡Ánimo a todos los equipos del CBJ! 💪`;
+  copyText(txt,"📋 Podio copiado: pégalo en WhatsApp");
+}
+
+/* ── Resultados ── */
+function resultadosScreen(){
+  const pub=published().slice().reverse(); const uid=S.user.uid;
+  return header("Resultados",`Temporada ${esc(S.cfg.season)}`)+
+  `<div class="content">
+    ${!isOpen()?`<div class="banner a">⏱️ <div><b>Jornada ${jOpen()} en juego.</b> Los resultados salen cuando el club los publica.</div></div>`:""}
+    ${pub.length?pub.map(j=>{ const s=(j.mPts||{})[uid];
+      const rows=Object.entries(j.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
+      return `<div class="card"><div class="hero" style="padding:14px 14px 6px">
+        <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div><div class="tiny" style="margin-top:3px">${rows.filter(([,r])=>r.us>r.them).length} victorias del club de ${rows.length}</div></div>
+          <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${s?s.p:"—"}</div><div class="slbl">${s?"tus puntos":"no jugaste"}</div></div></div></div>
+        ${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them; const pr=((S.myPreds||{})[String(j.n)]||{})[tid]; const o=pr?scorePred(pr,r):null;
+          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(j.fixtures?.[tid]?.rival||"")}${pr?` · dijiste ${pr.w==="W"?"gana":"pierde"}${pr.t?" por "+TRAMOS[pr.t]:""}${typeof pr.us==="number"?" ("+pr.us+"-"+pr.them+")":""}`:""}</div></div>
+            <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div>
+            <div class="rnum" style="min-width:34px"><div class="v ${o&&o.pts?"":"muted"}" style="font-size:16px">${o?(o.pts?"+"+o.pts:"0"):"·"}</div></div></div>`; }).join("")}
+      </div>`; }).join("")
+    :`<div class="card"><div class="empty">Aún no hay jornadas publicadas.</div></div>`}
+  </div>`;
+}
+
+/* ── Yo: perfil e insignias ── */
+function yoScreen(){
+  const m=me(); const t=m.teamId&&S.teams[m.teamId]; const b=badgesOf(S.user.uid);
+  const rk=ranking(); const my=rk.find(x=>x.uid===S.user.uid);
+  const cat=catOfUser(m); const rc=cat?ranking({cat}):null; const myc=rc&&rc.find(x=>x.uid===S.user.uid);
   const pub=published();
-  let body = `<div class="empty">Su plantilla se verá cuando cierre el mercado.</div>`;
-  if(src){
-    body=`<div class="sec">${src.live?"Plantilla J"+src.j.n+" (en juego)":"Plantilla J"+src.j.n}</div><div class="card">${(src.lu.roster||[]).map(tid=>{ const t=S.teams[tid]; if(!t) return ""; const p=(src.j.tPts||{})[tid];
-      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)} ${tid===src.lu.captain?'<span class="capb">©</span>':""}</div></div>${!src.live?`<div class="rnum"><div class="v">${p!=null?(tid===src.lu.captain?p*S.cfg.capMult:p):"0"}</div><div class="l">pts</div></div>`:""}</div>`; }).join("")||`<div class="empty">Sin equipos.</div>`}</div>`;
-  }
-  openModal(`<div class="mtitle">${esc(m.teamName)}</div><div class="msub">@${esc(m.name)} · ${fmt1(m.total||0)} pts totales</div>${body}
-    <div class="sec">Puntos por jornada</div><div class="card" style="padding:10px 12px">${barsHtml(pub.slice(-8).map(j=>({l:"J"+j.n,v:(m.byJ||{})[j.n]??null})))}</div>
-    <button class="btn-s" onclick="closeModal()">Cerrar</button>`);
+  return header("Tu cuenta",`@${esc(m.name)}`,`<button class="bbtn" onclick="openRules()" title="Reglas">📖</button>`)+
+  `<div class="content">
+    <div class="card"><div class="accent"></div><div class="hero">
+      <div class="hero-top"><div style="display:flex;gap:12px;align-items:center;min-width:0">${t?tbadge(t,46):`<div class="tbadge fam" style="width:46px;height:46px;font-size:22px">👪</div>`}
+        <div style="min-width:0"><div class="hero-name">${esc(m.name)}</div><div class="tiny" style="margin-top:3px">${t?esc(t.name):"Familia y amigos"}</div></div></div>
+        <div style="text-align:right"><div class="sval">${m.total||0}</div><div class="slbl">puntos</div></div></div>
+      <div class="grid4">
+        <div class="sbox kv"><div class="k">General</div><div class="v">${my?my.rank+"º":"—"} <span class="tiny">de ${rk.length}</span></div></div>
+        <div class="sbox kv"><div class="k">${cat?esc(cat):"Categoría"}</div><div class="v">${myc?myc.rank+"º <span class='tiny'>de "+rc.length+"</span>":"—"}</div></div>
+        <div class="sbox kv"><div class="k">Racha actual</div><div class="v">${b.run?"🔥 "+b.run:"0"} <span class="tiny">${b.run===1?"jornada":"jornadas"}</span></div></div>
+        <div class="sbox kv"><div class="k">Jornadas jugadas</div><div class="v">${b.jugadas}</div></div>
+      </div></div></div>
+    <div class="sec"><span>Insignias</span><span class="muted" style="text-transform:none;letter-spacing:0">${BADGES.filter(x=>b.res[x.k]).length} de ${BADGES.length}</span></div>
+    <div class="bgrid">${BADGES.map(x=>{ const n=b.res[x.k]; return `<button class="bdg ${n?"on":""}" onclick="openBadge('${x.k}')"><div class="bic">${x.ic}</div><div class="bt">${x.t}</div>${n>1?`<div class="bn">×${n}</div>`:""}</button>`; }).join("")}</div>
+    <div class="sec">Puntos por jornada</div>
+    <div class="card" style="padding:10px 12px">${barsHtml(pub.slice(-8).map(j=>({l:"J"+j.n,v:(m.byJ||{})[j.n]??null})))}</div>
+    <button class="btn-s" onclick="openRules()">📖 Cómo se juega</button>
+    <button class="btn-s" onclick="DB.auth.logout()">Cerrar sesión</button>
+    ${DEMO?`<button class="btn-d" onclick="DB.reset()">Reiniciar la demo</button>`:""}
+    <div class="tiny center mt12">Pronósticos CBJ v${APP_VERSION}</div>
+  </div>`;
 }
-async function shareRanking(){
-  const rk=ranking().slice(0,15); const lp=lastPub();
-  const txt=`🏀 *SuperManager CBJ* · Clasificación${lp?" tras la J"+lp.n:""}\n\n`+rk.map(x=>`${x.rank===1?"🥇":x.rank===2?"🥈":x.rank===3?"🥉":x.rank+"."} ${x.m.teamName} (@${x.m.name}) — ${fmt1(x.pts||0)}`).join("\n");
-  try{ await navigator.clipboard.writeText(txt); toast("📋 Copiado: pégalo en WhatsApp"); }
-  catch(e){ openModal(`<div class="mtitle">Copiar clasificación</div><textarea class="fi" style="height:260px;font-size:13px" onfocus="this.select()">${esc(txt)}</textarea><button class="btn-s" onclick="closeModal()">Cerrar</button>`); }
+function openBadge(k){
+  const x=BADGES.find(b=>b.k===k); const n=badgesOf(S.user.uid).res[k];
+  openModal(`<div class="center" style="font-size:54px;line-height:1.1;margin:4px 0 8px;${n?"":"filter:grayscale(1);opacity:.45"}">${x.ic}</div>
+    <div class="mtitle center">${x.t}</div><div class="msub center">${x.d}</div>
+    <div class="center"><span class="pill ${n?"g":"n"}">${n?"Conseguida"+(n>1?" ×"+n:""):"Todavía no"}</span></div>
+    <button class="btn-s" style="margin-top:16px" onclick="closeModal()">Cerrar</button>`);
+}
+function openRules(){
+  const P=S.cfg.pts;
+  openModal(`<div class="mtitle">Cómo se juega</div><div class="msub rules">
+    Cada semana el club publica los partidos del fin de semana, de alevines a senior. Tú pronosticas cada partido:<br>
+    &nbsp;&nbsp;· <b>¿Quién gana?</b> +${P.ganador}<br>
+    &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 14, 15 o más) +${P.tramo} si también aciertas quién gana<br>
+    &nbsp;&nbsp;· <b>Marcador exacto</b> (opcional): +${P.exacto}. Si te quedas a 3 puntos o menos en los dos marcadores: +${P.cerca}<br><br>
+    <b>El partido de tu equipo no se pronostica.</b> Ese se juega en la pista y se anima desde la grada.<br><br>
+    Los pronósticos se cierran antes del primer partido del fin de semana. <b>Nadie ve lo que ha dicho cada uno</b>: solo los puntos.<br><br>
+    Hay clasificación general, por categoría y por jornada, un podio cada semana e insignias por conseguir.<br><br>
+    Sin dinero ni premios: se juega por diversión y para seguir a todos los equipos del CBJ.
+  </div><button class="btn-s" onclick="closeModal(1)">Cerrar</button>`,true);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -826,18 +752,17 @@ async function shareRanking(){
    ════════════════════════════════════════════════════════════════ */
 function adminScreen(){
   if(!isAdmin()) return header("Admin")+`<div class="content"><div class="empty">Sin permisos.</div></div>`;
-  const tabs=[["jornada","Jornada"],["equipos","Equipos"],["usuarios","Mánagers"],["ajustes","Ajustes"]];
+  const tabs=[["jornada","Jornada"],["equipos","Equipos"],["usuarios","Jugadores"],["ajustes","Ajustes"]];
   const body={jornada:admJornada,equipos:admEquipos,usuarios:admUsuarios,ajustes:admAjustes}[S.adm.sec]();
   return header("Panel admin",DEMO?"Modo demo":"Solo visible para admins")+
   `<div class="content"><div class="chips" style="margin-bottom:14px">${tabs.map(([k,l])=>`<button class="chip ${S.adm.sec===k?"on":""}" onclick="S.adm.sec='${k}';render()">${l}</button>`).join("")}</div>${body}</div>`;
 }
 function admJornada(){
-  const J=jOpen(), open=S.cfg.mercado==="open", jd=curJ()||{}; const lp=lastPub();
-  const teams=activeTeams();
-  if(open){
+  const J=jOpen(), jd=curJ()||{}; const lp=lastPub(); const teams=activeTeams();
+  if(isOpen()){
     if(!S.adm.fx||S.adm.fx.J!==J) S.adm.fx={J,fx:clone(jd.fixtures||{})};
     const fx=S.adm.fx.fx; const n=Object.keys(fx).length;
-    return `<div class="banner g">🟢 <div><b>Jornada ${J} · mercado abierto.</b> 1) Mete los partidos del finde para que la gente haga la porra. 2) Cierra el mercado antes del primer partido.</div></div>
+    return `<div class="banner g">🟢 <div><b>Jornada ${J} · pronósticos abiertos.</b> 1) Marca los partidos del finde y guárdalos. 2) Cierra antes del primer partido.</div></div>
       <div class="sec"><span>Partidos de la J${J}</span><span class="muted" style="text-transform:none;letter-spacing:0">${n} de ${teams.length} juegan</span></div>
       <div class="card">${teams.map(t=>{ const f=fx[t.id];
         return `<div class="fxrow"><div class="arow" style="border:none;padding:0">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div></div>
@@ -846,37 +771,32 @@ function admJornada(){
             <input class="fi" id="fx_w_${t.id}" style="flex:1.3;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Sáb 11:00" value="${esc(f.when||"")}" onchange="S.adm.fx.fx['${t.id}'].when=this.value.trim()">
             <button class="btn-sm ${f.home===false?"ghost":""}" style="min-width:58px" onclick="S.adm.fx.fx['${t.id}'].home=!(S.adm.fx.fx['${t.id}'].home!==false);render()">${f.home===false?"Fuera":"Casa"}</button></div>`:""}
         </div>`; }).join("")||`<div class="empty">Da de alta los equipos primero.</div>`}</div>
-      <button class="btn-s" onclick="admSaveFx()">💾 Guardar partidos (se ven en la porra)</button>
-      <button class="btn-p mt8" onclick="admCloseMarket()">🔒 Cerrar mercado de la J${J}</button>
+      <button class="btn-s" onclick="admSaveFx()">💾 Guardar partidos (se publican para pronosticar)</button>
+      <button class="btn-p mt8" onclick="admClose()">🔒 Cerrar pronósticos de la J${J}</button>
       ${lp?`<button class="btn-s" onclick="admUndo()">↩️ Deshacer publicación de la J${lp.n}</button>`:""}`;
   }
   if(!S.adm.draft||S.adm.draft.J!==J) S.adm.draft={J,results:clone(jd.results||{})};
   const d=S.adm.draft; const fxT=Object.keys(jd.fixtures||{}).filter(tid=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a],S.teams[b]));
-  return `<div class="banner a">🔒 <div><b>Mercado cerrado · J${J}.</b> ${Object.keys(jd.lineups||{}).length} plantillas y ${Object.keys(jd.preds||{}).length} porras fijadas. Mete los marcadores (de Swish o del acta) y publica.</div></div>
+  return `<div class="banner a">🔒 <div><b>Pronósticos cerrados · J${J}.</b> ${jd.players||0} cuentas han pronosticado. Mete los marcadores y publica.</div></div>
     <div class="card">${fxT.map(tid=>{ const t=S.teams[tid]; const f=jd.fixtures[tid]; const r=d.results[tid]||{};
-      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub" id="rp_${tid}">${admResTxt(tid)}</div></div>
+      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(f.rival||"")}</div></div>
         <input class="fi vin" id="r_us_${tid}" inputmode="numeric" placeholder="CBJ" value="${r.us??""}" onchange="admRes('${tid}','us',this.value)">
         <span class="muted">–</span>
-        <input class="fi vin" id="r_th_${tid}" inputmode="numeric" placeholder="${esc((f.rival||"Rival").slice(0,6))}" value="${r.them??""}" onchange="admRes('${tid}','them',this.value)"></div>`; }).join("")||`<div class="empty">No marcaste partidos para esta jornada.</div>`}</div>
+        <input class="fi vin" id="r_th_${tid}" inputmode="numeric" placeholder="Rival" value="${r.them??""}" onchange="admRes('${tid}','them',this.value)"></div>`; }).join("")||`<div class="empty">No marcaste partidos para esta jornada.</div>`}</div>
     <button class="btn-s" onclick="admSaveDraft()">💾 Guardar borrador</button>
-    <button class="btn-p mt8" onclick="admPublish()">🚀 Publicar J${J} y reabrir mercado</button>
-    <button class="btn-s" onclick="admReopen()">Reabrir mercado sin publicar</button>`;
+    <button class="btn-p mt8" onclick="admPublish()">🚀 Publicar J${J} y abrir la siguiente</button>
+    <button class="btn-s" onclick="admReopen()">Reabrir pronósticos sin publicar</button>`;
 }
 function admFxToggle(tid){ const fx=S.adm.fx.fx; if(fx[tid]) delete fx[tid]; else fx[tid]={rival:"",when:"",home:true}; render(); }
-async function admSaveFx(){
-  const J=jOpen(); await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures:S.adm.fx.fx},fields:["n","status","fixtures"]}]); toast("💾 Partidos guardados");
-}
-function admResTxt(tid){ const r=S.adm.draft.results[tid]; if(!r||typeof r.us!=="number"||typeof r.them!=="number") return "Sin marcador"; const d=r.us-r.them; return (d>0?"Gana de "+d:d<0?"Pierde de "+(-d):"Empate")+" → "+teamPtsFor(d)+" pts"; }
-function admRes(tid,k,raw){
-  const r=S.adm.draft.results[tid]=S.adm.draft.results[tid]||{}; const v=String(raw).trim();
-  if(v===""){ delete r[k]; } else { const n=parseInt(v,10); if(!(n>=0&&n<250)) return toast("Marcador no válido",true); r[k]=n; }
-  const el=$("rp_"+tid); if(el) el.textContent=admResTxt(tid);
-}
-function admCloseMarket(){
-  const J=jOpen(); const nFx=Object.keys(S.adm.fx?.fx||curJ()?.fixtures||{}).length;
-  confirmModal("Cerrar mercado J"+J,`Se fijan las plantillas, capitanes y porras de los ${Object.keys(S.managers).length} mánagers.${nFx?"":"<br><br>⚠️ No has marcado ningún partido: la porra quedará vacía."}`,"Cerrar mercado",async()=>{
-    if(S.adm.fx&&S.adm.fx.J===J) await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,fixtures:S.adm.fx.fx},fields:["n","fixtures"]}]);
-    await DB.batch(closeMarketOps()); toast("🔒 Mercado cerrado");
+async function admSaveFx(){ const J=jOpen(); await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures:S.adm.fx.fx},fields:["n","status","fixtures"]}]); toast("💾 Partidos publicados para pronosticar"); }
+function admRes(tid,k,raw){ const r=S.adm.draft.results[tid]=S.adm.draft.results[tid]||{}; const v=String(raw).trim();
+  if(v===""){ delete r[k]; return; } const n=parseInt(v,10); if(!(n>=0&&n<250)) return toast("Marcador no válido",true); r[k]=n; }
+function admClose(){
+  const J=jOpen(); const fx=S.adm.fx&&S.adm.fx.J===J?S.adm.fx.fx:(curJ()?.fixtures||{});
+  if(!Object.keys(fx).length) return toast("Marca y guarda al menos un partido antes de cerrar",true);
+  confirmModal("Cerrar pronósticos J"+J,"Nadie podrá cambiar sus pronósticos hasta que publiques los resultados.","Cerrar",async()=>{
+    await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,fixtures:fx},fields:["n","fixtures"]}]);
+    await DB.batch(await closeOps()); toast("🔒 Pronósticos cerrados");
   });
 }
 async function admSaveDraft(){ const d=S.adm.draft; await DB.batch([{op:"set",col:"jornadas",id:String(d.J),data:{results:d.results},fields:["results"]}]); toast("💾 Borrador guardado"); }
@@ -885,124 +805,110 @@ function admPublish(){
   const full=Object.entries(d.results).filter(([,r])=>typeof r.us==="number"&&typeof r.them==="number");
   if(!full.length) return toast("Mete al menos un marcador completo",true);
   const missing=Object.keys(jd.fixtures||{}).filter(tid=>!full.find(([k])=>k===tid)).map(tid=>S.teams[tid]?.name).filter(Boolean);
-  const results=Object.fromEntries(full);
-  confirmModal("Publicar jornada "+d.J,`${full.length} resultados. Se suman puntos de equipos y porra y se reabre el mercado.${missing.length?`<br><br>⚠️ Sin marcador (puntuarán 0): ${missing.map(esc).join(", ")}.`:""}<br><br>Si te equivocas, puedes deshacerlo.`,"Publicar",async()=>{
-    await DB.batch(publishOps(d.J,results)); S.adm.draft=null; S.adm.fx=null; toast("🚀 Jornada "+d.J+" publicada");
+  confirmModal("Publicar jornada "+d.J,`${full.length} resultados.${missing.length?`<br><br>⚠️ Sin marcador (no puntúan): ${missing.map(esc).join(", ")}.`:""}<br><br>Si te equivocas, puedes deshacerlo.`,"Publicar",async()=>{
+    await DB.batch(await publishOps(d.J,Object.fromEntries(full))); S.adm.draft=null; S.adm.fx=null; toast("🚀 Jornada "+d.J+" publicada");
   });
 }
-function admReopen(){
-  confirmModal("Reabrir mercado","Se descartan las plantillas y porras fijadas (se volverán a fijar al cerrar). Los partidos y marcadores se conservan.","Reabrir",async()=>{
-    await admSaveDraft(); await DB.batch(reopenMarketOps()); toast("Mercado reabierto");
-  });
-}
+function admReopen(){ confirmModal("Reabrir pronósticos","Cada uno podrá volver a cambiar sus pronósticos. Los marcadores metidos se conservan.","Reabrir",async()=>{
+  await admSaveDraft(); await DB.batch([{op:"set",col:"config",id:"game",data:{estado:"open"},merge:true},{op:"set",col:"jornadas",id:String(jOpen()),data:{status:"open"},merge:true}]); toast("Pronósticos reabiertos"); }); }
 function admUndo(){
   const J=S.cfg.jornada;
-  confirmModal("Deshacer J"+J,"Se restan los puntos de esa jornada y el mercado vuelve a quedar cerrado con las plantillas y porras de entonces, para que corrijas marcadores y vuelvas a publicar.<br><br>⚠️ Los fichajes hechos desde la publicación se mantienen.","Deshacer",async()=>{
-    const ops=undoPublishOps(); if(!ops) return toast("Nada que deshacer",true);
-    await DB.batch(ops); S.adm.draft=null; toast("↩️ J"+J+" deshecha");
+  confirmModal("Deshacer J"+J,"Se restan los puntos de esa jornada y vuelve a quedar cerrada, con los pronósticos de entonces, para corregir los marcadores y publicar otra vez.","Deshacer",async()=>{
+    const ops=undoOps(); if(!ops) return toast("Nada que deshacer",true); await DB.batch(ops); S.adm.draft=null; toast("↩️ J"+J+" deshecha");
   },true);
 }
 function admEquipos(){
   const ts=Object.values(S.teams).sort(teamSort);
-  const nSug=ts.filter(t=>{const sg=suggestStars(t); return sg&&sg!==t.stars;}).length;
   return `<button class="btn-p" onclick="admTeamModal()">＋ Añadir equipo</button>
-    ${nSug?`<button class="btn-s" onclick="admApplySuggest()">⭐ Revisar estrellas según resultados (${nSug} cambios)</button>`:""}
     <div class="sec">${ts.length} equipos</div>
-    <div class="card">${ts.map(t=>`<div class="row" onclick="admTeamModal('${t.id}')">${tbadge(t)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${starsHtml(t.stars,12)} ${t.active===false?'<span class="pill n">Fuera del juego</span>':""}</div></div><div class="rnum"><div class="l">${Math.round(ownersPct(t.id)*100)}% lo tienen</div></div></div>`).join("")||`<div class="empty">Da de alta los equipos del club.</div>`}</div>`;
+    <div class="card">${ts.map(t=>`<div class="row" onclick="admTeamModal('${t.id}')">${tbadge(t)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${Object.values(S.managers).filter(m=>m.teamId===t.id).length} jugadores del juego ${t.active===false?'<span class="pill n">Oculto</span>':""}</div></div></div>`).join("")||`<div class="empty">Da de alta los equipos del club.</div>`}</div>`;
 }
 function admTeamModal(tid){
-  const t=tid?S.teams[tid]:{cat:"Cadete",gender:"M",suffix:"",stars:2,active:true};
+  const t=tid?S.teams[tid]:{cat:"Cadete",gender:"M",suffix:"",active:true};
   const sel=(id,opts,v)=>`<select class="fi" id="${id}">${opts.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v)?"selected":""}>${l}</option>`).join("")}</select>`;
-  openModal(`<div class="mtitle">${tid?"Editar equipo":"Nuevo equipo"}</div><div class="msub">Las estrellas marcan su nivel: ★ flojo, ★★ medio, ★★★ de los que más ganan.</div>
+  openModal(`<div class="mtitle">${tid?"Editar equipo":"Nuevo equipo"}</div><div class="msub">Solo el nombre del equipo: el juego no guarda ningún dato de jugadores.</div>
     <div class="frow"><div class="fg"><label class="fl" for="tm_cat">Categoría</label>${sel("tm_cat",CAT_ORDER.map(c=>[c,c]),t.cat)}</div>
       <div class="fg"><label class="fl" for="tm_gen">Género</label>${sel("tm_gen",Object.entries(GENDERS),t.gender)}</div></div>
-    <div class="frow"><div class="fg"><label class="fl" for="tm_suf">Letra (si hay varios)</label><input class="fi" id="tm_suf" maxlength="3" placeholder="A, B…" value="${esc(t.suffix||"")}"></div>
-      <div class="fg"><label class="fl" for="tm_stars">Estrellas</label>${sel("tm_stars",[[1,"★ (1)"],[2,"★★ (2)"],[3,"★★★ (3)"]],t.stars)}</div></div>
-    ${tid?`<div class="tgl ${t.active===false?"":"on"}" id="tm_act" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:4px 0 14px"><div class="box">${t.active===false?"":"✓"}</div><div><b>En el juego</b><div class="tiny">Si lo quitas, nadie podrá ficharlo (quien lo tenga lo conserva).</div></div></div>`:""}
+    <div class="fg"><label class="fl" for="tm_suf">Letra (si hay varios)</label><input class="fi" id="tm_suf" maxlength="3" placeholder="A, B…" value="${esc(t.suffix||"")}"></div>
+    ${tid?`<div class="tgl ${t.active===false?"":"on"}" id="tm_act" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:4px 0 14px"><div class="box">${t.active===false?"":"✓"}</div><div><b>Visible en el juego</b></div></div>`:""}
     <button class="btn-p" onclick="admSaveTeam(${tid?`'${tid}'`:"null"})">Guardar</button>
-    ${tid&&ownersPct(tid)===0&&!Object.keys(t.pts||{}).length?`<button class="btn-d" onclick="admDelTeam('${tid}')">Eliminar</button>`:""}
+    ${tid&&!Object.keys(t.res||{}).length&&!Object.values(S.managers).some(m=>m.teamId===tid)?`<button class="btn-d" onclick="admDelTeam('${tid}')">Eliminar</button>`:""}
     <button class="btn-s" onclick="closeModal()">Cancelar</button>`);
 }
 async function admSaveTeam(tid){
   const cat=$("tm_cat").value, gender=$("tm_gen").value, suffix=$("tm_suf").value.trim().toUpperCase();
   const name=`${cat} ${GENDERS[gender]}${suffix?" "+suffix:""}`;
   if(Object.values(S.teams).some(x=>x.id!==tid&&x.name===name)) return toast("Ya existe "+name+": ponle una letra",true);
-  const base=tid?Object.assign({},S.teams[tid]):{pts:{},res:{}}; delete base.id;
-  Object.assign(base,{cat,gender,suffix,name,stars:Number($("tm_stars").value),active: tid?$("tm_act").classList.contains("on"):true});
+  const base=tid?Object.assign({},S.teams[tid]):{res:{}}; delete base.id;
+  Object.assign(base,{cat,gender,suffix,name,active: tid?$("tm_act").classList.contains("on"):true});
   await DB.batch([{op:"set",col:"teams",id:tid||DB.newId(),data:base}]); closeModal(); toast("Guardado");
 }
-function admDelTeam(tid){ confirmModal("Eliminar equipo","Nadie lo tiene y no tiene resultados.","Eliminar",async()=>{ await DB.batch([{op:"del",col:"teams",id:tid}]); closeModal(); toast("Eliminado"); },true); }
-function admApplySuggest(){
-  const ch=activeTeams().map(t=>({t,sg:suggestStars(t)})).filter(x=>x.sg&&x.sg!==x.t.stars);
-  confirmModal("Revisar estrellas",ch.map(x=>`${esc(x.t.name)}: ${starsTxt(x.t.stars)} → <b>${starsTxt(x.sg)}</b>`).join("<br>")+"<br><br>Quien ya los tenga los conserva.","Aplicar",async()=>{
-    await DB.batch(ch.map(x=>({op:"set",col:"teams",id:x.t.id,data:{stars:x.sg},merge:true}))); toast("⭐ Estrellas actualizadas");
-  });
-}
+function admDelTeam(tid){ confirmModal("Eliminar equipo","No tiene resultados ni jugadores asociados.","Eliminar",async()=>{ await DB.batch([{op:"del",col:"teams",id:tid}]); closeModal(); toast("Eliminado"); },true); }
 function admUsuarios(){
   const rk=ranking();
-  return `<div class="sec">${rk.length} mánagers</div><div class="card">${rk.map(x=>`<div class="row"><div class="rank">${x.rank}</div><div class="rmain"><div class="rname">${esc(x.m.teamName)}</div><div class="rsub">@${esc(x.m.name)} · ${(x.m.roster||[]).length}/${S.cfg.plantilla} equipos · ${rosterStars(x.m.roster)}/${S.cfg.estrellas} ★</div></div><button class="btn-sm ghost" onclick="admDelManager('${x.uid}')">Quitar</button></div>`).join("")||`<div class="empty">Nadie todavía. Comparte el enlace y el código.</div>`}</div>`;
+  return `<div class="tiny" style="margin:0 2px 10px;line-height:1.5">Si un apodo no es adecuado o lleva un nombre real, cámbialo. Si alguien olvida su PIN, quítalo y que se registre de nuevo.</div>
+    <div class="sec">${rk.length} cuentas</div><div class="card">${rk.map(x=>{ const t=x.m.teamId&&S.teams[x.m.teamId];
+      return `<div class="row" style="cursor:default"><div class="rank">${x.rank}</div><div class="rmain"><div class="rname">${esc(x.m.name)}</div><div class="rsub">${t?esc(t.name):"Familia y amigos"} · ${x.m.total||0} pts</div></div>
+        <button class="btn-sm ghost" onclick="admRename('${x.uid}')">Apodo</button><button class="btn-sm ghost" onclick="admDelUser('${x.uid}')">Quitar</button></div>`; }).join("")||`<div class="empty">Nadie todavía.</div>`}</div>`;
 }
-function admDelManager(uid){
+function admRename(uid){
   const m=S.managers[uid];
-  confirmModal("Quitar a @"+esc(m.name),"Se borra su cuenta del juego y sus puntos. No se puede deshacer.","Quitar",async()=>{ await DB.batch([{op:"del",col:"managers",id:uid}]); toast("Quitado"); },true);
+  openModal(`<div class="mtitle">Cambiar apodo</div><div class="msub">Cambia cómo se ve en la clasificación. Para entrar seguirá usando el apodo original.</div>
+    <div class="fg"><label class="fl" for="rn_v">Apodo visible</label><input class="fi" id="rn_v" maxlength="18" value="${esc(m.name)}"></div>
+    <button class="btn-p" onclick="admDoRename('${uid}')">Guardar</button><button class="btn-s" onclick="closeModal()">Cancelar</button>`);
 }
+async function admDoRename(uid){ const v=$("rn_v").value.trim(); if(v.length<3) return toast("Mínimo 3 letras",true); await DB.batch([{op:"set",col:"managers",id:uid,data:{name:v},merge:true}]); closeModal(); toast("Apodo cambiado"); }
+function admDelUser(uid){ const m=S.managers[uid];
+  confirmModal("Quitar a "+esc(m.name),"Se borra su cuenta del juego, sus puntos y sus pronósticos.","Quitar",async()=>{ await DB.batch([{op:"del",col:"managers",id:uid},{op:"del",col:"preds",id:uid}]); toast("Quitado"); },true); }
 function admAjustes(){
-  const c=S.cfg;
+  const c=S.cfg, P=c.pts;
   return `<div class="card" style="padding:16px">
-    <div class="frow"><div class="fg"><label class="fl" for="cf_season">Temporada</label><input class="fi" id="cf_season" value="${esc(c.season)}"></div>
-      <div class="fg"><label class="fl" for="cf_est">Estrellas</label><input class="fi" id="cf_est" inputmode="numeric" value="${c.estrellas}"></div></div>
-    <div class="frow"><div class="fg"><label class="fl" for="cf_pl">Equipos por plantilla</label><input class="fi" id="cf_pl" inputmode="numeric" value="${c.plantilla}"></div>
-      <div class="fg"><label class="fl" for="cf_cam">Fichajes / jornada</label><input class="fi" id="cf_cam" inputmode="numeric" value="${c.cambios}"></div></div>
-    <div class="frow"><div class="fg"><label class="fl" for="cf_cap">Capitán ×</label><input class="fi" id="cf_cap" inputmode="decimal" value="${c.capMult}"></div>
-      <div class="fg"><label class="fl" for="cf_pg">Porra ganador</label><input class="fi" id="cf_pg" inputmode="numeric" value="${c.porraGanador}"></div>
-      <div class="fg"><label class="fl" for="cf_pt">Porra diferencia</label><input class="fi" id="cf_pt" inputmode="numeric" value="${c.porraTramo}"></div></div>
-    <div class="fl" style="margin-top:4px">Puntos por resultado</div>
-    <div class="card" style="margin:6px 0 12px">${c.puntos.map((t,i)=>`<div class="arow"><div class="rmain" style="font-size:13px">${tierLabel(i)}</div><input class="fi vin" id="cf_p${i}" inputmode="numeric" value="${t.pts}"></div>`).join("")}</div>
+    <div class="fg"><label class="fl" for="cf_season">Temporada</label><input class="fi" id="cf_season" value="${esc(c.season)}"></div>
+    <div class="fl">Puntos</div>
+    <div class="frow"><div class="fg"><label class="fl" for="cf_g">Ganador</label><input class="fi" id="cf_g" inputmode="numeric" value="${P.ganador}"></div>
+      <div class="fg"><label class="fl" for="cf_t">Diferencia</label><input class="fi" id="cf_t" inputmode="numeric" value="${P.tramo}"></div></div>
+    <div class="frow"><div class="fg"><label class="fl" for="cf_e">Marcador exacto</label><input class="fi" id="cf_e" inputmode="numeric" value="${P.exacto}"></div>
+      <div class="fg"><label class="fl" for="cf_c">Marcador cerca (±3)</label><input class="fi" id="cf_c" inputmode="numeric" value="${P.cerca}"></div></div>
+    <div class="tiny" style="margin-bottom:10px">Los cambios de puntos se aplican a las jornadas que se publiquen a partir de ahora.</div>
     <button class="btn-p" onclick="admSaveCfg()">Guardar ajustes</button>
     ${!DEMO?`<div class="fg mt12"><label class="fl" for="cf_code">Código del club</label><div class="frow"><input class="fi" id="cf_code" placeholder="Nuevo código"><button class="btn-sm" onclick="admSetCode()">Cambiar</button></div></div>`:""}
   </div>`;
 }
 async function admSaveCfg(){
-  const n=id=>Number(String($(id).value).replace(",","."));
-  const puntos=S.cfg.puntos.map((t,i)=>({min:t.min,pts:n("cf_p"+i)}));
-  const data={season:$("cf_season").value.trim()||S.cfg.season,estrellas:Math.round(n("cf_est")),plantilla:Math.round(n("cf_pl")),cambios:Math.round(n("cf_cam")),
-    capMult:n("cf_cap"),porraGanador:n("cf_pg"),porraTramo:n("cf_pt"),puntos};
-  if(!(data.plantilla>=1&&data.plantilla<=8&&data.estrellas>=data.plantilla&&data.cambios>=0&&data.capMult>=1&&puntos.every(p=>p.pts>=0))) return toast("Revisa los valores",true);
-  await DB.batch([{op:"set",col:"config",id:"game",data,merge:true}]); toast("Ajustes guardados");
+  const n=id=>Number($(id).value); const pts={ganador:n("cf_g"),tramo:n("cf_t"),exacto:n("cf_e"),cerca:n("cf_c")};
+  if(Object.values(pts).some(v=>!(v>=0&&v<=50))) return toast("Revisa los puntos",true);
+  await DB.batch([{op:"set",col:"config",id:"game",data:{season:$("cf_season").value.trim()||S.cfg.season,pts},merge:true}]); toast("Ajustes guardados");
 }
-async function admSetCode(){
-  const v=$("cf_code").value.trim(); if(v.length<4) return toast("Mínimo 4 caracteres",true);
-  try{ await DB.setClubCode(v); toast("Código cambiado"); $("cf_code").value=""; }catch(e){ toast("Error: "+e.message,true); }
-}
+async function admSetCode(){ const v=$("cf_code").value.trim(); if(v.length<4) return toast("Mínimo 4 caracteres",true);
+  try{ await DB.setClubCode(v); toast("Código cambiado"); $("cf_code").value=""; }catch(e){ toast("Error: "+e.message,true); } }
 
 /* ════════════════════════════════════════════════════════════════
-   DATOS DE DEMO (equipos genéricos, mánagers y resultados ficticios)
+   DATOS DE DEMO (equipos genéricos, cuentas y resultados de ejemplo)
    ════════════════════════════════════════════════════════════════ */
 async function seedDemo(){
-  let seed=11; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
-  const T=[["Senior","M","",3],["Junior","M","",3],["Cadete","M","",2],["Cadete","F","",2],["Infantil","M","",2],["Infantil","F","",1],["Preinfantil","M","",1],["Preinfantil","F","",1],["Alevín","M","",1],["Alevín","F","",1]];
+  let seed=19; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const T=[["Senior","M"],["Junior","M"],["Cadete","M"],["Cadete","F"],["Infantil","M"],["Infantil","F"],["Preinfantil","M"],["Preinfantil","F"],["Alevín","M"],["Alevín","F"]];
   const rivals=["CB Huesca","Monzón","Barbastro","Fraga","Sabiñánigo","Stadium Casablanca","CN Helios","Almozara","Tarazona","Ejea","Alcañiz","El Olivar"];
-  const ops=[]; const ids=[];
-  T.forEach(([cat,g,suf,stars],i)=>{ const id="team"+i; ids.push({id,str:stars*6+rnd()*6});
-    ops.push({op:"set",col:"teams",id,data:{cat,gender:g,suffix:suf,name:`${cat} ${GENDERS[g]}`,stars,pts:{},res:{},active:true}}); });
-  ops.push({op:"set",col:"config",id:"game",data:clone(DEFAULT_CFG)});
-  const mans=[["carmen_r","Los del Rapitán"],["jorgeM","Canfranc Ballers"],["pili","Triple de Oroel"],["fercebo","Peña Oroel BC"],["anapal","Ciudadela Squad"],["raul8","Pirineo Tres"],["bea_s","Las del Pabellón"],["dlatas","Aragón Dunk"],["silviac","Mate Jacetano"],["tomasU","Zona 2-3"],["rocioF","Bocina Final"],["andres_o","Tapón y Contra"]];
-  mans.forEach(([n,t],k)=>{
-    const pool=ids.map(x=>x.id).sort(()=>rnd()-.5); const pick=[]; let left=DEFAULT_CFG.estrellas;
-    for(const id of pool){ if(pick.length>=5) break; const s=ops.find(o=>o.id===id).data.stars; if(s<=left-(5-pick.length-1)){ pick.push(id); left-=s; } }
-    ops.push({op:"set",col:"managers",id:"demo_m"+k,data:Object.assign(newManagerDoc(n,t),{roster:pick,captain:pick[Math.floor(rnd()*pick.length)]||null,done:pick.length===5})});
-  });
+  const ops=[{op:"set",col:"config",id:"game",data:clone(DEFAULT_CFG)}]; const ids=[];
+  T.forEach(([cat,g],i)=>{ const id="team"+i; ids.push({id,str:rnd()*14-4}); ops.push({op:"set",col:"teams",id,data:{cat,gender:g,suffix:"",name:`${cat} ${GENDERS[g]}`,res:{},active:true}}); });
+  const nicks=["Triplista23","LaMuralla","Rebotona","Canastero7","ZonaPress","Mate_Jaca","AlleyOop","Bocina","Tapones","Contraataque","Aro_Naranja","Oroel_Fan","FamiliaLacasa","Pivot_Loco"];
+  nicks.forEach((n,k)=>{ const tid= k%4===3 ? null : ids[k%ids.length].id; ops.push({op:"set",col:"managers",id:"d"+k,data:newUserDoc(n,tid)}); ops.push({op:"set",col:"preds",id:"d"+k,data:{}}); });
   await DB.batch(ops);
   for(let J=1;J<=4;J++){
-    const fixtures={}; ids.forEach((x,i)=>{ if(rnd()<0.85) fixtures[x.id]={rival:rivals[Math.floor(rnd()*rivals.length)],when:(rnd()<.5?"Sáb ":"Dom ")+(9+Math.floor(rnd()*9))+":00",home:rnd()<.5}; });
+    const fixtures={}; ids.forEach(x=>{ if(rnd()<0.85) fixtures[x.id]={rival:rivals[Math.floor(rnd()*rivals.length)],when:(rnd()<.5?"Sáb ":"Dom ")+(9+Math.floor(rnd()*9))+":00",home:rnd()<.5}; });
     await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures}}]);
-    if(J===4) break; // la J4 queda abierta con partidos para probar la porra
-    const mset=[];
-    Object.keys(S.managers).forEach(uid=>{ const preds={}; Object.keys(fixtures).forEach(tid=>{ if(rnd()<.8) preds[tid]={w:rnd()<.6?"W":"L",t:1+Math.floor(rnd()*3)}; }); const pp={}; pp[String(J)]=preds; mset.push({op:"set",col:"managers",id:uid,data:{preds:pp},merge:true}); });
-    await DB.batch(mset);
-    await DB.batch(closeMarketOps());
-    const results={}; ids.forEach(x=>{ if(!fixtures[x.id]) return; const us=35+Math.round(x.str*1.2+rnd()*30), them=40+Math.round(rnd()*38); results[x.id]={us,them:them===us?them+1:them}; });
-    await DB.batch(publishOps(J,results));
+    if(J===4) break; // la J4 queda abierta para probar
+    const results={}; ids.forEach(x=>{ if(!fixtures[x.id]) return; let us=48+Math.round(x.str+rnd()*26), them=44+Math.round(rnd()*26); if(us===them) us++; results[x.id]={us,them}; });
+    const pops=[];
+    nicks.forEach((n,k)=>{ const uid="d"+k; const pj={};
+      Object.keys(fixtures).forEach(tid=>{ if(S.managers[uid].teamId===tid||rnd()<.15) return; const r=results[tid]; const good=rnd()<.62;
+        const w = good ? (r.us>r.them?"W":"L") : (r.us>r.them?"L":"W"); const pr={w,t:1+Math.floor(rnd()*3)};
+        if(rnd()<.3){ const us=r.us+Math.round((rnd()-.5)*(rnd()<.15?0:10)), them=r.them+Math.round((rnd()-.5)*(rnd()<.15?0:10)); if((us>them)===(w==="W")&&us!==them){ pr.us=us; pr.them=them; pr.t=tramoOf(us-them); } }
+        pj[tid]=pr; });
+      pops.push({op:"set",col:"preds",id:uid,data:{[J]:pj},fields:[String(J)]}); });
+    await DB.batch(pops);
+    await DB.batch(await closeOps());
+    await DB.batch(await publishOps(J,results));
   }
 }
 
@@ -1014,7 +920,8 @@ async function seedDemo(){
   DB.auth.onChange(u=>{
     const prev=S.user&&S.user.uid; S.user=u;
     if(!DEMO){ if(u&&u.uid!==prev) startListeners(); if(!u) stopListeners(); }
-    if(u&&S.tab==="admin"&&!u.admin) S.tab="equipo";
+    watchMyPreds();
+    if(u&&S.tab==="admin"&&!u.admin) S.tab="jornada";
     closeModal(); render();
   });
   if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
