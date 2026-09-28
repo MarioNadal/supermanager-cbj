@@ -180,7 +180,25 @@ const APP_VERSION = "0.1.0";
 
 // ⚙️ Pega aquí la configuración del proyecto Firebase NUEVO (Consola → Configuración del proyecto → Tus apps → Web).
 // Mientras sea null, la app funciona en MODO DEMO con datos ficticios guardados solo en este navegador.
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCHkwRoR7kO169mDdUi8Jy2EwJagBliYfw",
+    authDomain: "supermanager-cbj.firebaseapp.com",
+    projectId: "supermanager-cbj",
+    storageBucket: "supermanager-cbj.firebasestorage.app",
+    messagingSenderId: "952499382475",
+    appId: "1:952499382475:web:dfc25b623b803707a9134e"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>};
 
 const DEMO = !FIREBASE_CONFIG || typeof firebase === "undefined";
 const TEAMS = {
