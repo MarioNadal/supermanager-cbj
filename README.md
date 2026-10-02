@@ -1,17 +1,19 @@
 # Pronósticos CBJ
 
-El juego de pronósticos de todo el Club Baloncesto Jaca, de alevines a senior. Es una PWA de un solo archivo (`index.html`) con el mismo estilo que Kortline v3.
+Pronósticos de los partidos del Club Baloncesto Jaca entre coaches (Mario, Alex y Alberto). Es una PWA de un solo archivo (`index.html`) con el mismo estilo que Kortline v3.
 
-## Cómo se juega (v0.3)
+## Cómo se juega (v0.4)
 Cada semana el club publica los partidos del fin de semana, y cada cuenta pronostica cada partido:
 
 | Qué | Puntos |
 |---|---|
 | Quién gana | +2 |
 | Por cuánto (1-5 / 6-14 / 15+), además de acertar el ganador | +3 |
+| 🐺 Lobo solitario: eres el único que acierta el ganador de un partido (con 2+ pronósticos) | puntos de ese partido x2 |
 
 - **El partido de tu propio equipo no se pronostica: se anima.**
-- **Los pronósticos son privados.** Nadie ve qué ha dicho cada uno, solo los puntos. Al cerrar la jornada se muestran porcentajes globales ("el 70% dice que gana el CBJ").
+- **Mientras está abierta, cada uno solo ve lo suyo.** Al cerrar la jornada se copia lo de todos a `jornadas/{n}.picks` y se ve qué ha dicho cada uno; en Resultados, con los puntos de cada uno y el 🐺 de quien fue lobo solitario (`jornadas/{n}.solo`).
+- **Normas:** a los jugadores ni una palabra y prohibido influir en ningún partido.
 - Hay clasificación **general**, **por categoría** (según el equipo elegido al registrarse) y **por jornada**, con un **podio** que se comparte por WhatsApp.
 - **Insignias:** Pleno, Triple, En racha, Fiel, Podio y Ojo de halcón.
 - Sin dinero ni premios.

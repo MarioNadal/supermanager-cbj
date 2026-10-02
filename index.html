@@ -225,7 +225,7 @@ button{font-family:inherit;}
    · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
    · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.3.6";
+const APP_VERSION = "0.4.0";
 
 // ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
@@ -458,7 +458,7 @@ async function closeOps(){
     if(Object.keys(clean).length) locked[uid]=clean; });
   return [
     {op:"set",col:"predsLocked",id:String(J),data:locked},
-    {op:"set",col:"jornadas",id:String(J),data:{n:J,status:"closed",fixtures:fx,results:jd.results||{},agg,players:Object.keys(locked).length,closedAt:Date.now()},fields:["n","status","fixtures","results","agg","players","closedAt"]},
+    {op:"set",col:"jornadas",id:String(J),data:{n:J,status:"closed",fixtures:fx,results:jd.results||{},agg,picks:locked,players:Object.keys(locked).length,closedAt:Date.now()},fields:["n","status","fixtures","results","agg","picks","players","closedAt"]},
     {op:"set",col:"config",id:"game",data:{estado:"closed"},merge:true}
   ];
 }
@@ -487,7 +487,7 @@ async function publishOps(J,results){
   Object.entries(mPts).forEach(([uid,s])=>{ const m=S.managers[uid]; if(!m) return;
     const byJ=Object.assign({},m.byJ||{}); byJ[J]=s.p;
     ops.push({op:"set",col:"managers",id:uid,data:{byJ,total:Object.values(byJ).reduce((a,v)=>a+v,0)},merge:true}); });
-  ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign(jd,{n:J,status:"published",results,mPts,podium,publishedAt:Date.now()})});
+  ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign(jd,{n:J,status:"published",results,mPts,podium,picks:locked,solo:Object.fromEntries(Object.keys(results).map(t=>[t,loneOf(t)]).filter(([,u])=>u)),publishedAt:Date.now()})});
   ops.push({op:"set",col:"config",id:"game",data:{jornada:J,estado:"open"},merge:true});
   return ops;
 }
@@ -497,7 +497,7 @@ function undoOps(){
   const ops=[];
   Object.values(S.teams).forEach(t=>{ if(!t.res||!t.res[J]) return; const d=Object.assign({},t); delete d.id; d.res=Object.assign({},t.res); delete d.res[J]; ops.push({op:"set",col:"teams",id:t.id,data:d}); });
   Object.entries(S.managers).forEach(([uid,m])=>{ if(!m.byJ||m.byJ[J]==null) return; const d=Object.assign({},m); delete d.id; d.byJ=Object.assign({},m.byJ); delete d.byJ[J]; d.total=Object.values(d.byJ).reduce((a,v)=>a+v,0); ops.push({op:"set",col:"managers",id:uid,data:d}); });
-  const nj=Object.assign({},jd,{status:"closed"}); delete nj.id; delete nj.mPts; delete nj.podium; delete nj.publishedAt;
+  const nj=Object.assign({},jd,{status:"closed"}); delete nj.id; delete nj.mPts; delete nj.podium; delete nj.publishedAt; delete nj.solo;
   ops.push({op:"set",col:"jornadas",id:String(J),data:nj});
   ops.push({op:"set",col:"config",id:"game",data:{jornada:J-1,estado:"closed"},merge:true});
   return ops;
@@ -551,6 +551,15 @@ function rivalShort(n){
   const s=String(n||"").replace(/(^|\s)(club\s+(de\s+)?baloncesto|club\s+basket|baloncesto|basket(ball)?|c\.?\s?b\.?|b\.?\s?c\.?|club|s\.?d\.?|c\.?d\.?|a\.?d\.?)(?=\s|$)/gi," ").replace(/\s{2,}/g," ").trim();
   return s||String(n||"").trim()||"el rival";
 }
+// Lo que ha dicho cada uno en un partido (solo se enseña con la jornada cerrada).
+function picksLine(j,tid,res){
+  const pk=j&&j.picks; if(!pk) return "";
+  const parts=Object.entries(pk).filter(([u,pj])=>u!==S.user.uid&&pj[tid]&&S.managers[u]).map(([u,pj])=>{ const pr=pj[tid];
+    const txt=(pr.w==="W"?"CBJ":rivalShort(j.fixtures?.[tid]?.rival))+(pr.t?" "+TRAMOS[pr.t]:"");
+    let pts=""; if(res){ let o=scorePred(pr,res).pts; const lone=j.solo&&j.solo[tid]===u; if(lone)o*=SOLO_MULT; pts=` <b style="color:var(${o?"--green":"--td"})">${o?"+"+o:"0"}${lone?" 🐺":""}</b>`; }
+    return `<span style="white-space:nowrap">${esc(S.managers[u].name)}: ${esc(txt)}${pts}</span>`; });
+  return parts.length?`<div class="tiny" style="margin-top:4px;line-height:1.5;display:flex;flex-wrap:wrap;gap:2px 12px">${parts.join("")}</div>`:"";
+}
 function fxText(f){ return `<span>${f.home===false?"@":"vs"}</span><b class="riv">${esc(f.rival||"Rival")}</b>${f.when?`<span class="when">· ${esc(f.when)}</span>`:""}`; }
 function barsHtml(entries){
   if(!entries.length) return `<div class="tiny" style="padding:8px 2px">Todavía no hay jornadas publicadas.</div>`;
@@ -586,6 +595,16 @@ function render(){
   if(!me()){ root.innerHTML=`<div class="auth"><div class="empty">No se encuentra la cuenta.<br><button class="btn-s" onclick="DB.auth.logout()">Salir</button></div></div>`; return; }
   const scr={jornada:jornadaScreen,clasif:clasifScreen,resultados:resultadosScreen,yo:yoScreen,admin:adminScreen}[S.tab]||jornadaScreen;
   const y=window.scrollY; root.innerHTML=scr()+navBar(); window.scrollTo(0,y);
+  soloToast();
+}
+// Aviso una sola vez por jornada si has sido lobo solitario.
+function soloToast(){
+  const j=published().slice(-1)[0]; if(!j||!j.solo) return;
+  const mine=Object.entries(j.solo).filter(([,u])=>u===S.user.uid).map(([t])=>S.teams[t]&&S.teams[t].name).filter(Boolean);
+  if(!mine.length) return;
+  const k="pcbj_solo_"+S.user.uid+"_"+j.n+"_"+(j.publishedAt||0);
+  try{ if(localStorage.getItem(k)) return; localStorage.setItem(k,"1"); }catch(e){ if(S._soloShown===k) return; S._soloShown=k; }
+  toast("🐺 ¡Lobo solitario "+(mine.length>2?"en "+mine.length+" partidos":"en "+mine.join(" y "))+"! Puntos x"+SOLO_MULT);
 }
 
 /* ── Alta / entrada ── */
@@ -595,24 +614,24 @@ function authScreen(){
   return `<div class="auth">
     <img class="auth-logo" src="assets/logo.svg" alt="">
     <div class="auth-t">PRONÓSTICOS <span>CBJ</span></div>
-    <div class="auth-s">El juego de todo el Club Baloncesto Jaca · ${esc(S.cfg.season)}</div>
+    <div class="auth-s">Entre coaches del CBJ · ${esc(S.cfg.season)}</div>
     ${DEMO?`<div class="demo">🧪 <b>Modo demo</b>: equipos y resultados de ejemplo, guardados solo en este navegador. Código del club: <b>DEMO</b>. En la demo todas las cuentas son admin.</div>`:""}
     <div class="seg" style="margin-bottom:16px">
       <button class="${!reg?"on":""}" onclick="S.authTab='login';render()">Entrar</button>
       <button class="${reg?"on":""}" onclick="S.authTab='reg';render()">Crear cuenta</button>
     </div>
     <div class="fg"><label class="fl" for="a_nick">Apodo</label><input class="fi" id="a_nick" autocomplete="username" maxlength="18" placeholder="Ej. Triplista23">
-      ${reg?`<div class="tiny" style="margin-top:5px">Es lo que verá todo el club. <b style="color:var(--tx)">No pongas tu nombre real.</b></div>`:""}</div>
-    ${reg?`<div class="fg"><label class="fl" for="a_team">Tu equipo del club</label><select class="fi" id="a_team"><option value="">No juego en el club (familia, amigos…)</option>${teamOpts}</select>
-      <div class="tiny" style="margin-top:5px">Compites también con los de tu categoría. El partido de tu equipo no se pronostica: se anima.</div></div>`:""}
+      ${reg?`<div class="tiny" style="margin-top:5px">Es lo que verán los demás en la clasificación.</div>`:""}</div>
+    ${reg?`<div class="fg"><label class="fl" for="a_team">El equipo que entrenas</label><select class="fi" id="a_team"><option value="">Ninguno</option>${teamOpts}</select>
+      <div class="tiny" style="margin-top:5px">El partido de tu equipo no se pronostica: se entrena.</div></div>`:""}
     <div class="frow">
       <div class="fg"><label class="fl" for="a_pin">PIN (4 cifras)</label><input class="fi pin" id="a_pin" inputmode="numeric" maxlength="4" type="password" autocomplete="${reg?"new-password":"current-password"}" placeholder="••••"></div>
       ${reg?`<div class="fg"><label class="fl" for="a_code">Código del club</label><input class="fi" id="a_code" autocapitalize="characters" placeholder="${DEMO?"DEMO":"Lo da el club"}"></div>`:""}
     </div>
     ${reg?`<div class="tgl" id="a_ok" onclick="this.classList.toggle('on');this.querySelector('.box').textContent=this.classList.contains('on')?'✓':''" style="padding:2px 0 14px">
-      <div class="box"></div><div style="font-size:13px;line-height:1.45">Soy padre, madre o tutor, o tengo su permiso para jugar.</div></div>`:""}
+      <div class="box"></div><div style="font-size:13px;line-height:1.45">Juro no contarle nada a los jugadores ni influir en ningún partido 🤐</div></div>`:""}
     <button class="btn-p" id="a_btn" onclick="doAuth()">${reg?"Crear cuenta":"Entrar"}</button>
-    <div class="tiny center" style="margin-top:18px;line-height:1.6">Solo se guarda el apodo y el equipo. Sin dinero ni premios: se juega por diversión.<br>v${APP_VERSION}</div>
+    <div class="tiny center" style="margin-top:18px;line-height:1.6">Entre coaches. Sin dinero: solo gloria y derecho a vacilar.<br>v${APP_VERSION}</div>
   </div>`;
 }
 async function doAuth(){
@@ -651,13 +670,13 @@ function jornadaScreen(){
       <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc(rivalShort(f.rival)))}</div>
       <div class="plbl ${p.w?"":"dim"}">¿Por cuántos puntos? <span>+${P.tramo}</span></div>
       <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(bt).join("")}</div>
-      ${agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} del club dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
+      ${!open&&jd.picks?`<div class="agg">${picksLine(jd,tid,null)||`<div class="tiny">Nadie más lo ha pronosticado.</div>`}</div>`:agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
     </div>`; };
   return header(`Jornada ${J}`,open?`${done} de ${mine.length} pronosticados`:"Pronósticos cerrados")+
   `<div class="content">
     ${stateBanner()}
-    ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Nadie ve tus pronósticos: solo tus puntos. Quién gana <b style="color:var(--tx)">+${P.ganador}</b> · por cuánto <b style="color:var(--tx)">+${P.tramo}</b>.</div>`+fx.map(card).join("")
-      :`<div class="card"><div class="empty">El club todavía no ha publicado los partidos de la jornada ${J}.<br>Vuelve en unos días.</div></div>`}
+    ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Los pronósticos de todos se ven al cerrar la jornada. Quién gana <b style="color:var(--tx)">+${P.ganador}</b> · por cuánto <b style="color:var(--tx)">+${P.tramo}</b> · 🐺 único que acierta <b style="color:var(--tx)">x${SOLO_MULT}</b>.</div>`+fx.map(card).join("")
+      :`<div class="card"><div class="empty">Todavía no están los partidos de la jornada ${J}.<br>Vuelve en unos días.</div></div>`}
   </div>`;
 }
 
@@ -704,16 +723,16 @@ function resultadosScreen(){
   const pub=published().slice().reverse(); const uid=S.user.uid;
   return header("Resultados",`Temporada ${esc(S.cfg.season)}`)+
   `<div class="content">
-    ${!isOpen()?`<div class="banner a">⏱️ <div><b>Jornada ${jOpen()} en juego.</b> Los resultados salen cuando el club los publica.</div></div>`:""}
+    ${!isOpen()?`<div class="banner a">⏱️ <div><b>Jornada ${jOpen()} en juego.</b> Los resultados salen cuando se publiquen.</div></div>`:""}
     ${pub.length?pub.map(j=>{ const s=(j.mPts||{})[uid];
       const rows=Object.entries(j.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
       return `<div class="card"><div class="hero" style="padding:14px 14px 6px">
-        <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div><div class="tiny" style="margin-top:3px">${rows.filter(([,r])=>r.us>r.them).length} victorias del club de ${rows.length}</div></div>
+        <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div><div class="tiny" style="margin-top:3px">${rows.filter(([,r])=>r.us>r.them).length} victorias del CBJ de ${rows.length}</div></div>
           <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${s?s.p:"—"}</div><div class="slbl">${s?"tus puntos":"no jugaste"}</div>${s&&s.solo?`<div class="tiny" style="margin-top:2px">🐺 lobo solitario ×${s.solo}</div>`:""}</div></div></div>
-        ${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them; const pr=((S.myPreds||{})[String(j.n)]||{})[tid]; const o=pr?scorePred(pr,r):null;
-          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub one">${esc(j.fixtures?.[tid]?.rival||"")}${pr&&pr.w?" · dijiste "+(pr.w==="W"?"gana":"pierde")+(pr.t?" por "+TRAMOS[pr.t]:""):""}</div></div>
+        ${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them; const pr=((S.myPreds||{})[String(j.n)]||{})[tid]; const o=pr?scorePred(pr,r):null; const lone=j.solo&&j.solo[tid]===uid; if(o&&lone)o.pts*=SOLO_MULT;
+          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub one">${esc(j.fixtures?.[tid]?.rival||"")}${pr&&pr.w?" · dijiste "+(pr.w==="W"?"gana":"pierde")+(pr.t?" por "+TRAMOS[pr.t]:""):""}</div>${picksLine(j,tid,r)}</div>
             <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div>
-            <div class="rnum" style="min-width:34px"><div class="v ${o&&o.pts?"":"muted"}" style="font-size:16px">${o?(o.pts?"+"+o.pts:"0"):"·"}</div></div></div>`; }).join("")}
+            <div class="rnum" style="min-width:34px"><div class="v ${o&&o.pts?"":"muted"}" style="font-size:16px">${o?(o.pts?"+"+o.pts:"0"):"·"}${lone?" 🐺":""}</div></div></div>`; }).join("")}
       </div>`; }).join("")
     :`<div class="card"><div class="empty">Aún no hay jornadas publicadas.</div></div>`}
   </div>`;
@@ -757,15 +776,15 @@ function openBadge(k){
 function openRules(){
   const P=S.cfg.pts;
   openModal(`<div class="mtitle">Cómo se juega</div><div class="msub rules">
-    Cada semana el club publica los partidos del fin de semana, de alevines a senior. Tú pronosticas cada partido:<br>
+    Cada semana salen los partidos del fin de semana de los equipos del CBJ. Tú pronosticas cada partido:<br>
     &nbsp;&nbsp;· <b>¿Quién gana?</b> +${P.ganador}<br>
     &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 14, 15 o más) +${P.tramo} si también aciertas quién gana<br>
     &nbsp;&nbsp;· 🐺 <b>Lobo solitario:</b> si eres el único que acierta el ganador de un partido, tus puntos de ese partido valen el doble<br>
     <br>
-    <b>El partido de tu equipo no se pronostica.</b> Ese se juega en la pista y se anima desde la grada.<br><br>
-    Los pronósticos se cierran antes del primer partido del fin de semana. <b>Nadie ve lo que ha dicho cada uno</b>: solo los puntos.<br><br>
-    Hay clasificación general, por categoría y por jornada, un podio cada semana e insignias por conseguir.<br><br>
-    Sin dinero ni premios: se juega por diversión y para seguir a todos los equipos del CBJ.
+    <b>El partido de tu equipo no se pronostica.</b><br><br>
+    Los pronósticos se cierran antes del primer partido del fin de semana. Hasta entonces nadie ve lo tuyo; <b>al cerrar se ve lo que ha dicho cada uno</b>.<br><br>
+    🚫 <b>Normas sagradas:</b> a los jugadores ni una palabra, y prohibido influir en ningún partido.<br><br>
+    Sin dinero: solo gloria y derecho a vacilar toda la temporada.
   </div><button class="btn-s" onclick="closeModal(1)">Cerrar</button>`,true);
 }
 
