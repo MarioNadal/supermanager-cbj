@@ -94,6 +94,10 @@ button{font-family:inherit;}
 .rmain{flex:1;min-width:0;}
 .rname{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rsub{font-size:11px;color:var(--td);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.rsub.one{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rsub.fx{flex-wrap:nowrap;white-space:nowrap;gap:4px;}
+.rsub.fx .riv{min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--tx);}
+.rsub.fx .when{flex-shrink:0;}
 .rnum{text-align:right;flex-shrink:0;}
 .rnum .v{font-family:var(--font-d);font-weight:900;font-size:19px;line-height:1;}
 .rnum .l{font-size:10px;color:var(--td);font-weight:700;margin-top:2px;}
@@ -162,7 +166,7 @@ button{font-family:inherit;}
 .picks{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .picks.three{grid-template-columns:repeat(3,1fr);margin-top:6px;}
 .picks.dim{opacity:.4;}
-.pick{border:1px solid var(--border);background:var(--s2);color:var(--td);font-weight:800;font-size:13px;padding:10px 4px;border-radius:9px;cursor:pointer;min-height:42px;}
+.pick{border:1px solid var(--border);background:var(--s2);color:var(--td);font-weight:800;font-size:13px;padding:10px 6px;border-radius:9px;cursor:pointer;min-height:42px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pick:disabled{cursor:default;}
 .pick.on{background:rgba(240,99,24,.16);border-color:var(--orange);color:var(--orange);}
 .pick.w.on{background:rgba(34,197,94,.14);border-color:var(--green);color:var(--green);}
@@ -221,7 +225,7 @@ button{font-family:inherit;}
    · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
    · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.3.4";
+const APP_VERSION = "0.3.6";
 
 // ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
@@ -242,6 +246,7 @@ const CATS = {
 const CAT_ORDER = Object.keys(CATS);
 const GENDERS = {M:"Masculino",F:"Femenino",X:"Mixto"};
 const TRAMOS = {1:"1 a 5",2:"6 a 14",3:"15 o más"};
+const SOLO_MULT = 2; // Lobo solitario: único que acierta el ganador de un partido → puntos de ese partido x2
 const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:2,tramo:3},ptsV:3};
 const BADGES = [
   {k:"pleno",  ic:"🎯", t:"Pleno",        d:"Acierta el ganador de todos tus partidos de una jornada (mínimo 3)."},
@@ -460,10 +465,17 @@ async function closeOps(){
 async function publishOps(J,results){
   const jd=Object.assign({},S.jornadas[String(J)]||{}); delete jd.id;
   const locked=(await DB.getDoc("predsLocked",String(J)))||{};
+  // Lobo solitario: por partido, quién acierta el ganador. Si de 2+ pronósticos solo acierta uno, sus puntos de ese partido x2.
+  const hits={}, cnt={};
+  Object.entries(locked).forEach(([uid,pj])=>Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return;
+    cnt[tid]=(cnt[tid]||0)+1; if(scorePred(pr,r).g) (hits[tid]=hits[tid]||[]).push(uid); }));
+  const loneOf=tid=>(cnt[tid]>=2&&(hits[tid]||[]).length===1)?hits[tid][0]:null;
   const mPts={};
   Object.entries(locked).forEach(([uid,pj])=>{
-    const s={p:0,n:0,g:0,t:0};
-    Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return; const o=scorePred(pr,r); s.n++; s.p+=o.pts; if(o.g)s.g++; if(o.t)s.t++; });
+    const s={p:0,n:0,g:0,t:0,solo:0};
+    Object.entries(pj).forEach(([tid,pr])=>{ const r=results[tid]; if(!r) return; const o=scorePred(pr,r); let pts=o.pts;
+      if(loneOf(tid)===uid){ pts*=SOLO_MULT; s.solo++; }
+      s.n++; s.p+=pts; if(o.g)s.g++; if(o.t)s.t++; });
     mPts[uid]=s;
   });
   const order=Object.entries(mPts).sort((a,b)=>b[1].p-a[1].p);
@@ -534,7 +546,12 @@ function stateBanner(){
   if(isOpen()) return `<div class="banner g">🟢 <div><b>Pronósticos abiertos</b> · jornada ${jOpen()}. Se cierran antes del primer partido.</div></div>`;
   return `<div class="banner a">🔒 <div><b>Pronósticos cerrados</b> · se está jugando la jornada ${jOpen()}. ¡A animar!</div></div>`;
 }
-function fxText(f){ return `${f.home===false?"@":"vs"} <b style="color:var(--tx)">${esc(f.rival||"Rival")}</b>${f.when?` · ${esc(f.when)}`:""}`; }
+// Nombre corto del rival para botones: quita "Club Baloncesto", "CB", "C.B.", "Basket"… y se queda con lo que identifica.
+function rivalShort(n){
+  const s=String(n||"").replace(/(^|\s)(club\s+(de\s+)?baloncesto|club\s+basket|baloncesto|basket(ball)?|c\.?\s?b\.?|b\.?\s?c\.?|club|s\.?d\.?|c\.?d\.?|a\.?d\.?)(?=\s|$)/gi," ").replace(/\s{2,}/g," ").trim();
+  return s||String(n||"").trim()||"el rival";
+}
+function fxText(f){ return `<span>${f.home===false?"@":"vs"}</span><b class="riv">${esc(f.rival||"Rival")}</b>${f.when?`<span class="when">· ${esc(f.when)}</span>`:""}`; }
 function barsHtml(entries){
   if(!entries.length) return `<div class="tiny" style="padding:8px 2px">Todavía no hay jornadas publicadas.</div>`;
   const max=Math.max(1,...entries.map(e=>e.v??0));
@@ -620,18 +637,18 @@ function jornadaScreen(){
   const P=S.cfg.pts;
   const card=([tid,f])=>{
     const t=S.teams[tid];
-    if(tid===m.teamId) return `<div class="pcard own"><div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)} <span class="pill o">Tu equipo</span></div><div class="rsub">${fxText(f)}</div></div></div>
+    if(tid===m.teamId) return `<div class="pcard own"><div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)} <span class="pill o">Tu equipo</span></div><div class="rsub fx" title="${esc(f.rival||"")}">${fxText(f)}</div></div></div>
       <div class="owntxt">💪 Este no se pronostica: <b>¡se anima!</b></div></div>`;
     const p=myPred(J,tid)||{}; const agg=!open&&jd.agg&&jd.agg[tid];
     const dis=open?"":"disabled";
-    const bw=(w,l)=>`<button class="pick ${w==="W"?"w":"l"} ${p.w===w?"on":""}" ${dis} onclick="pickW('${tid}','${w}')">${l}</button>`;
+    const bw=(w,l)=>`<button class="pick ${w==="W"?"w":"l"} ${p.w===w?"on":""}" title="${l}" ${dis} onclick="pickW('${tid}','${w}')">${l}</button>`;
     const bt=k=>`<button class="pick ${p.t===k?"on":""}" ${dis} onclick="pickT('${tid}',${k})">${TRAMOS[k]}</button>`;
     const full=p.w&&p.t;
     return `<div class="pcard">
-      <div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub">${fxText(f)}</div></div>
+      <div class="prow">${tbadge(t,36)}<div class="rmain"><div class="rname">${esc(t.name)}</div><div class="rsub fx" title="${esc(f.rival||"")}">${fxText(f)}</div></div>
         ${p.w?`<span class="pill ${full?"g":"o"}">${full?"✓ Listo":"Falta diferencia"}</span>`:""}</div>
       <div class="plbl">¿Quién gana? <span>+${P.ganador}</span></div>
-      <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc((f.rival||"el rival").split(" ").slice(0,2).join(" ")))}</div>
+      <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc(rivalShort(f.rival)))}</div>
       <div class="plbl ${p.w?"":"dim"}">¿Por cuántos puntos? <span>+${P.tramo}</span></div>
       <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(bt).join("")}</div>
       ${agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} del club dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
@@ -692,9 +709,9 @@ function resultadosScreen(){
       const rows=Object.entries(j.results||{}).filter(([tid])=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a[0]],S.teams[b[0]]));
       return `<div class="card"><div class="hero" style="padding:14px 14px 6px">
         <div class="hero-top"><div><div class="hero-name" style="font-size:22px">Jornada ${j.n}</div><div class="tiny" style="margin-top:3px">${rows.filter(([,r])=>r.us>r.them).length} victorias del club de ${rows.length}</div></div>
-          <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${s?s.p:"—"}</div><div class="slbl">${s?"tus puntos":"no jugaste"}</div></div></div></div>
+          <div style="text-align:right"><div class="d" style="font-size:26px;color:var(--orange)">${s?s.p:"—"}</div><div class="slbl">${s?"tus puntos":"no jugaste"}</div>${s&&s.solo?`<div class="tiny" style="margin-top:2px">🐺 lobo solitario ×${s.solo}</div>`:""}</div></div></div>
         ${rows.map(([tid,r])=>{ const t=S.teams[tid]; const d=r.us-r.them; const pr=((S.myPreds||{})[String(j.n)]||{})[tid]; const o=pr?scorePred(pr,r):null;
-          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(j.fixtures?.[tid]?.rival||"")}${pr&&pr.w?" · dijiste "+(pr.w==="W"?"gana":"pierde")+(pr.t?" por "+TRAMOS[pr.t]:""):""}</div></div>
+          return `<div class="arow">${tbadge(t,30)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub one">${esc(j.fixtures?.[tid]?.rival||"")}${pr&&pr.w?" · dijiste "+(pr.w==="W"?"gana":"pierde")+(pr.t?" por "+TRAMOS[pr.t]:""):""}</div></div>
             <div class="d ${d>0?"up":d<0?"down":""}" style="font-size:17px">${r.us}-${r.them}</div>
             <div class="rnum" style="min-width:34px"><div class="v ${o&&o.pts?"":"muted"}" style="font-size:16px">${o?(o.pts?"+"+o.pts:"0"):"·"}</div></div></div>`; }).join("")}
       </div>`; }).join("")
@@ -743,6 +760,7 @@ function openRules(){
     Cada semana el club publica los partidos del fin de semana, de alevines a senior. Tú pronosticas cada partido:<br>
     &nbsp;&nbsp;· <b>¿Quién gana?</b> +${P.ganador}<br>
     &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 14, 15 o más) +${P.tramo} si también aciertas quién gana<br>
+    &nbsp;&nbsp;· 🐺 <b>Lobo solitario:</b> si eres el único que acierta el ganador de un partido, tus puntos de ese partido valen el doble<br>
     <br>
     <b>El partido de tu equipo no se pronostica.</b> Ese se juega en la pista y se anima desde la grada.<br><br>
     Los pronósticos se cierran antes del primer partido del fin de semana. <b>Nadie ve lo que ha dicho cada uno</b>: solo los puntos.<br><br>
@@ -771,7 +789,7 @@ function admJornada(){
       <div class="card">${teams.map(t=>{ const f=fx[t.id];
         return `<div class="fxrow"><div class="arow" style="border:none;padding:0">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div></div>
           <div class="tgl ${f?"on":""}" style="padding:0" onclick="admFxToggle('${t.id}')"><div class="box">${f?"✓":""}</div><span class="tiny">Juega</span></div></div>
-          ${f?`<div class="frow" style="margin-top:8px;gap:6px"><input class="fi" id="fx_r_${t.id}" style="flex:2;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Rival" value="${esc(f.rival||"")}" onchange="S.adm.fx.fx['${t.id}'].rival=this.value.trim()">
+          ${f?`<div class="frow" style="margin-top:8px;gap:6px"><input class="fi" id="fx_r_${t.id}" maxlength="40" style="flex:2;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Rival" value="${esc(f.rival||"")}" onchange="S.adm.fx.fx['${t.id}'].rival=this.value.trim()">
             <input class="fi" id="fx_w_${t.id}" style="flex:1.3;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Sáb 11:00" value="${esc(f.when||"")}" onchange="S.adm.fx.fx['${t.id}'].when=this.value.trim()">
             <button class="btn-sm ${f.home===false?"ghost":""}" style="min-width:58px" onclick="S.adm.fx.fx['${t.id}'].home=!(S.adm.fx.fx['${t.id}'].home!==false);render()">${f.home===false?"Fuera":"Casa"}</button></div>`:""}
         </div>`; }).join("")||`<div class="empty">Da de alta los equipos primero.</div>`}</div>
@@ -783,7 +801,7 @@ function admJornada(){
   const d=S.adm.draft; const fxT=Object.keys(jd.fixtures||{}).filter(tid=>S.teams[tid]).sort((a,b)=>teamSort(S.teams[a],S.teams[b]));
   return `<div class="banner a">🔒 <div><b>Pronósticos cerrados · J${J}.</b> ${jd.players||0} cuentas han pronosticado. Mete los marcadores y publica.</div></div>
     <div class="card">${fxT.map(tid=>{ const t=S.teams[tid]; const f=jd.fixtures[tid]; const r=d.results[tid]||{};
-      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub">${esc(f.rival||"")}</div></div>
+      return `<div class="arow">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div><div class="rsub one">${esc(f.rival||"")}</div></div>
         <input class="fi vin" id="r_us_${tid}" inputmode="numeric" placeholder="CBJ" value="${r.us??""}" onchange="admRes('${tid}','us',this.value)">
         <span class="muted">–</span>
         <input class="fi vin" id="r_th_${tid}" inputmode="numeric" placeholder="Rival" value="${r.them??""}" onchange="admRes('${tid}','them',this.value)"></div>`; }).join("")||`<div class="empty">No marcaste partidos para esta jornada.</div>`}</div>
