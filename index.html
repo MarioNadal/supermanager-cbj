@@ -165,6 +165,8 @@ button{font-family:inherit;}
 .prow{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .picks{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .picks.three{grid-template-columns:repeat(3,1fr);margin-top:6px;}
+.picks.four{grid-template-columns:repeat(4,1fr);margin-top:6px;}
+.picks.four .pick{font-size:12px;padding:10px 2px;}
 .picks.dim{opacity:.4;}
 .pick{border:1px solid var(--border);background:var(--s2);color:var(--td);font-weight:800;font-size:13px;padding:10px 6px;border-radius:9px;cursor:pointer;min-height:42px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pick:disabled{cursor:default;}
@@ -225,7 +227,7 @@ button{font-family:inherit;}
    · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
    · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 
 // ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
@@ -245,7 +247,7 @@ const CATS = {
 };
 const CAT_ORDER = Object.keys(CATS);
 const GENDERS = {M:"Masculino",F:"Femenino",X:"Mixto"};
-const TRAMOS = {1:"1 a 5",2:"6 a 14",3:"15 o más"};
+const TRAMOS = {1:"1 a 5",2:"6 a 10",3:"11 a 15",4:"16 o más"};
 const SOLO_MULT = 2; // Lobo solitario: único que acierta el ganador de un partido → puntos de ese partido x2
 const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:2,tramo:3},ptsV:3};
 const BADGES = [
@@ -262,7 +264,7 @@ const $ = id => document.getElementById(id);
 const clone = o => JSON.parse(JSON.stringify(o ?? null));
 const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-const tramoOf = d => { const a=Math.abs(d); return a<=5?1:a<=14?2:3; };
+const tramoOf = d => { const a=Math.abs(d); return a<=5?1:a<=10?2:a<=15?3:4; };
 const pct = x => Math.round(x*100)+"%";
 function toast(msg,err){ const t=document.createElement("div"); t.className="toast"+(err?" err":""); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
 
@@ -669,7 +671,7 @@ function jornadaScreen(){
       <div class="plbl">¿Quién gana? <span>+${P.ganador}</span></div>
       <div class="picks">${bw("W","Gana CBJ")}${bw("L","Gana "+esc(rivalShort(f.rival)))}</div>
       <div class="plbl ${p.w?"":"dim"}">¿Por cuántos puntos? <span>+${P.tramo}</span></div>
-      <div class="picks three ${p.w?"":"dim"}">${[1,2,3].map(bt).join("")}</div>
+      <div class="picks four ${p.w?"":"dim"}">${[1,2,3,4].map(bt).join("")}</div>
       ${!open&&jd.picks?`<div class="agg">${picksLine(jd,tid,null)||`<div class="tiny">Nadie más lo ha pronosticado.</div>`}</div>`:agg&&agg.n?`<div class="agg"><div class="aggbar"><span style="width:${pct(agg.w/agg.n)}"></span></div><div class="tiny">${pct(agg.w/agg.n)} dice que gana el CBJ · ${agg.n} pronósticos</div></div>`:""}
     </div>`; };
   return header(`Jornada ${J}`,open?`${done} de ${mine.length} pronosticados`:"Pronósticos cerrados")+
@@ -778,7 +780,7 @@ function openRules(){
   openModal(`<div class="mtitle">Cómo se juega</div><div class="msub rules">
     Cada semana salen los partidos del fin de semana de los equipos del CBJ. Tú pronosticas cada partido:<br>
     &nbsp;&nbsp;· <b>¿Quién gana?</b> +${P.ganador}<br>
-    &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 14, 15 o más) +${P.tramo} si también aciertas quién gana<br>
+    &nbsp;&nbsp;· <b>¿Por cuántos puntos?</b> (1 a 5, 6 a 10, 11 a 15, 16 o más) +${P.tramo} si también aciertas quién gana<br>
     &nbsp;&nbsp;· 🐺 <b>Lobo solitario:</b> si eres el único que acierta el ganador de un partido, tus puntos de ese partido valen el doble<br>
     <br>
     <b>El partido de tu equipo no se pronostica.</b><br><br>

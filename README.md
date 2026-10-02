@@ -8,7 +8,7 @@ Cada semana el club publica los partidos del fin de semana, y cada cuenta pronos
 | Qué | Puntos |
 |---|---|
 | Quién gana | +2 |
-| Por cuánto (1-5 / 6-14 / 15+), además de acertar el ganador | +3 |
+| Por cuánto (1-5 / 6-10 / 11-15 / 16+), además de acertar el ganador | +3 |
 | 🐺 Lobo solitario: eres el único que acierta el ganador de un partido (con 2+ pronósticos) | puntos de ese partido x2 |
 
 - **El partido de tu propio equipo no se pronostica: se anima.**
