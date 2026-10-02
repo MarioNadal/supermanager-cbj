@@ -114,6 +114,19 @@ button{font-family:inherit;}
 .banner.g{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#bbf7d0;}
 .banner.a{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3);color:#fde68a;}
 .banner.o{background:rgba(240,99,24,.08);border-color:rgba(240,99,24,.3);color:#fed7aa;}
+.dl{border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(34,197,94,.35);background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(34,197,94,.04));}
+.dl.warn{border-color:rgba(245,158,11,.45);background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(245,158,11,.04));}
+.dl.hot{border-color:rgba(239,68,68,.55);background:linear-gradient(135deg,rgba(239,68,68,.2),rgba(239,68,68,.05));}
+.dl.shut{border-color:var(--border);background:var(--s);}
+.dl-k{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--td);}
+.dl-c{font-family:'Bebas Neue',Impact,sans-serif;font-size:34px;line-height:1.05;margin-top:2px;color:var(--tx);font-variant-numeric:tabular-nums;}
+.dl.warn .dl-c{color:var(--amber,#f59e0b);} .dl.hot .dl-c{color:var(--red);}
+.dl-w{font-size:13px;color:var(--td);margin-top:2px;}
+.dl-me{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;font-weight:700;}
+.dl-bar{flex:1;height:6px;border-radius:9px;background:var(--s3);overflow:hidden;} .dl-bar span{display:block;height:100%;background:var(--orange);border-radius:9px;}
+.dl-bar.ok span{background:var(--green);}
+.prog{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px;} .prog:last-child{border-bottom:none;}
+.prog b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .banner b{color:var(--tx);}
 /* ── Barras ── */
 .bars{display:flex;align-items:flex-end;gap:6px;height:90px;padding:6px 2px 0;}
@@ -227,7 +240,7 @@ button{font-family:inherit;}
    · Los pronósticos de cada uno son privados (nadie ve quién dijo qué).
    · Nadie pronostica el partido de su propio equipo.
    ════════════════════════════════════════════════════════════════ */
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.5.0";
 
 // ⚙️ Configuración del proyecto Firebase. Si es null → MODO DEMO (datos de ejemplo en este navegador).
 const FIREBASE_CONFIG = {
@@ -249,7 +262,7 @@ const CAT_ORDER = Object.keys(CATS);
 const GENDERS = {M:"Masculino",F:"Femenino",X:"Mixto"};
 const TRAMOS = {1:"1 a 5",2:"6 a 10",3:"11 a 15",4:"16 o más"};
 const SOLO_MULT = 2; // Lobo solitario: único que acierta el ganador de un partido → puntos de ese partido x2
-const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:2,tramo:3},ptsV:3};
+const DEFAULT_CFG = {season:"2026-27",jornada:0,estado:"open",pts:{ganador:4,tramo:6},ptsV:4};
 const BADGES = [
   {k:"pleno",  ic:"🎯", t:"Pleno",        d:"Acierta el ganador de todos tus partidos de una jornada (mínimo 3)."},
   {k:"triple", ic:"🏀", t:"Triple",       d:"Acierta ganador y diferencia en 3 partidos de la misma jornada."},
@@ -380,7 +393,11 @@ const me = () => S.user && S.managers[S.user.uid];
 const isAdmin = () => !!(S.user && S.user.admin);
 const jOpen = () => (S.cfg.jornada||0)+1;
 const curJ = () => S.jornadas[String(jOpen())] || null;
-const isOpen = () => S.cfg.estado==="open";
+// Cierre automático: el primer partido de la jornada (viernes o sábado, el que sea antes).
+const deadlineOf = jd => { const ts=Object.values((jd&&jd.fixtures)||{}).map(f=>f&&f.at).filter(x=>typeof x==="number"&&x>0); return ts.length?Math.min(...ts):null; };
+const curDeadline = () => deadlineOf(curJ());
+const pastDeadline = () => { const d=curDeadline(); return !!d && Date.now()>=d; };
+const isOpen = () => S.cfg.estado==="open" && !pastDeadline();
 const published = () => Object.values(S.jornadas).filter(j=>j.status==="published").sort((a,b)=>a.n-b.n);
 const lastPub = () => { const p=published(); return p[p.length-1]||null; };
 const activeTeams = () => Object.values(S.teams).filter(t=>t.active!==false).sort(teamSort);
@@ -435,7 +452,7 @@ function scorePred(pr,res){
 }
 function myPred(J,tid){ return ((S.myPreds||{})[String(J)]||{})[tid]||null; }
 async function savePred(tid,patch){
-  if(!isOpen()) return toast("Los pronósticos ya están cerrados",true);
+  if(!isOpen()){ render(); return toast("Los pronósticos ya están cerrados",true); }
   if(me().teamId===tid) return;
   const J=String(jOpen()); const all=clone(S.myPreds||{}); all[J]=all[J]||{};
   const p=Object.assign({},all[J][tid]||{},patch);
@@ -490,7 +507,7 @@ async function publishOps(J,results){
     const byJ=Object.assign({},m.byJ||{}); byJ[J]=s.p;
     ops.push({op:"set",col:"managers",id:uid,data:{byJ,total:Object.values(byJ).reduce((a,v)=>a+v,0)},merge:true}); });
   ops.push({op:"set",col:"jornadas",id:String(J),data:Object.assign(jd,{n:J,status:"published",results,mPts,podium,picks:locked,solo:Object.fromEntries(Object.keys(results).map(t=>[t,loneOf(t)]).filter(([,u])=>u)),publishedAt:Date.now()})});
-  ops.push({op:"set",col:"config",id:"game",data:{jornada:J,estado:"open"},merge:true});
+  ops.push({op:"set",col:"config",id:"game",data:{jornada:J,estado:"open",deadline:0},merge:true});
   return ops;
 }
 function undoOps(){
@@ -544,9 +561,56 @@ function navBar(){
   if(isAdmin()) it.push(["admin","⚙️","Admin"]);
   return `<nav class="nav">${it.map(([k,i,l])=>`<button class="nb ${S.tab===k?"on":""}" onclick="go('${k}')"><span class="ni">${i}</span><span>${l}</span></button>`).join("")}</nav>`;
 }
+function myProgress(){
+  const jd=curJ(); const m=me(); if(!jd||!m) return {done:0,total:0};
+  const tids=Object.keys(jd.fixtures||{}).filter(t=>S.teams[t]&&t!==m.teamId);
+  const mine=(S.myPreds||{})[String(jOpen())]||{};
+  return {done:tids.filter(t=>mine[t]&&mine[t].w&&mine[t].t).length,total:tids.length};
+}
 function stateBanner(){
-  if(isOpen()) return `<div class="banner g">🟢 <div><b>Pronósticos abiertos</b> · jornada ${jOpen()}. Se cierran antes del primer partido.</div></div>`;
-  return `<div class="banner a">🔒 <div><b>Pronósticos cerrados</b> · se está jugando la jornada ${jOpen()}. ¡A animar!</div></div>`;
+  const J=jOpen(), jd=curJ(), dl=curDeadline();
+  if(!isOpen()) return `<div class="dl shut"><div class="dl-k">🔒 Jornada ${J} · cerrada</div><div class="dl-c">¡A animar!</div><div class="dl-w">${dl?"Cerró el "+esc(longWhen(dl)).toLowerCase()+". ":""}${jd&&jd.picks?"Los pronósticos de todos se ven abajo.":"Lo que ha puesto cada uno se ve en cuanto el admin abra la app."}</div></div>`;
+  if(!jd||!Object.keys(jd.fixtures||{}).length) return `<div class="banner g">🟢 <div><b>Jornada ${J}</b> · todavía no están los partidos.</div></div>`;
+  const p=myProgress(); const all=p.total&&p.done===p.total; const left=dl?dl-Date.now():null;
+  const cls=left==null?"":left<3*3600e3?"hot":left<24*3600e3?"warn":"";
+  return `<div class="dl ${cls}">
+    <div class="dl-k">⏰ Jornada ${J} · ${dl?"cierra en":"abierta"}</div>
+    <div class="dl-c" id="dl_c">${dl?countdown(left):"Antes del 1er partido"}</div>
+    ${dl?`<div class="dl-w">${esc(longWhen(dl))} · antes del primer partido</div>`:`<div class="dl-w">El admin aún no ha puesto las horas de los partidos.</div>`}
+    <div class="dl-me"><span>${all?"✅ Lo tienes todo":`✍️ Te faltan <span style="color:var(--orange)">${p.total-p.done}</span>`}</span>
+      <div class="dl-bar ${all?"ok":""}"><span style="width:${p.total?Math.round(p.done/p.total*100):0}%"></span></div><span class="muted">${p.done}/${p.total}</span></div>
+  </div>`;
+}
+// Quién lo tiene hecho (solo admin: los pronósticos son privados hasta el cierre).
+let progT=0;
+async function loadProgress(force){
+  if(!S.user||!S.user.admin||!isOpen()) return; if(!force&&Date.now()-progT<45000) return; progT=Date.now();
+  try{ const all=await DB.getAll("preds"); const J=String(jOpen()); const fx=(curJ()||{}).fixtures||{};
+    S.prog=Object.keys(S.managers).map(uid=>{ const m=S.managers[uid]; const pj=(all.find(d=>d.id===uid)||{})[J]||{};
+      const tids=Object.keys(fx).filter(t=>S.teams[t]&&t!==m.teamId);
+      return {uid,name:m.name,done:tids.filter(t=>pj[t]&&pj[t].w&&pj[t].t).length,total:tids.length}; }).sort((a,b)=>a.name.localeCompare(b.name));
+    render(); }catch(e){ console.warn("progress",e); }
+}
+function progressCard(){
+  if(!S.user||!S.user.admin||!isOpen()||!S.prog) return "";
+  return `<div class="sec"><span>¿Quién lo tiene hecho?</span><span class="muted" style="text-transform:none;letter-spacing:0">solo lo ves tú</span></div>
+    <div class="card">${S.prog.map(x=>{ const ok=x.total&&x.done===x.total;
+      return `<div class="prog"><b>${esc(x.name)}${x.uid===S.user.uid?" (tú)":""}</b><span class="${ok?"":"muted"}">${ok?"✅ Completo":x.done?`⏳ ${x.done}/${x.total}`:"❌ Nada"}</span></div>`; }).join("")}</div>`;
+}
+// Reloj: actualiza la cuenta atrás y, al pasar la hora, cierra (la vista y, si eres admin, la jornada).
+let wasOpen=null, autoClosing=false;
+setInterval(()=>{
+  if(!S.user||!Object.values(S.ready).every(Boolean)) return;
+  const open=isOpen(); const el=$("dl_c"); const dl=curDeadline();
+  if(el&&dl&&open) el.textContent=countdown(dl-Date.now());
+  if(wasOpen!==null&&open!==wasOpen&&!document.querySelector("#mroot>*")&&!(document.activeElement&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) render();
+  wasOpen=open; autoClose(); if(S.tab==="jornada") loadProgress();
+},20000);
+async function autoClose(){
+  if(autoClosing||!S.user||!S.user.admin||S.cfg.estado!=="open"||!pastDeadline()) return;
+  autoClosing=true;
+  try{ await DB.batch(await closeOps()); toast("🔒 Jornada "+jOpen()+" cerrada automáticamente"); }
+  catch(e){ console.warn("autoClose",e); } finally{ autoClosing=false; }
 }
 // Nombre corto del rival para botones: quita "Club Baloncesto", "CB", "C.B.", "Basket"… y se queda con lo que identifica.
 function rivalShort(n){
@@ -562,7 +626,15 @@ function picksLine(j,tid,res){
     return `<span style="white-space:nowrap">${esc(S.managers[u].name)}: ${esc(txt)}${pts}</span>`; });
   return parts.length?`<div class="tiny" style="margin-top:4px;line-height:1.5;display:flex;flex-wrap:wrap;gap:2px 12px">${parts.join("")}</div>`:"";
 }
-function fxText(f){ return `<span>${f.home===false?"@":"vs"}</span><b class="riv">${esc(f.rival||"Rival")}</b>${f.when?`<span class="when">· ${esc(f.when)}</span>`:""}`; }
+const DIAS=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const hhmm = d => String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+const fxWhen = ms => { const d=new Date(ms); return DIAS[d.getDay()].slice(0,3).replace(/^./,c=>c.toUpperCase())+" "+hhmm(d); };
+const longWhen = ms => { const d=new Date(ms); return DIAS[d.getDay()].replace(/^./,c=>c.toUpperCase())+" "+d.getDate()+" "+MESES[d.getMonth()]+" · "+hhmm(d); };
+const toLocalInput = ms => { if(!ms) return ""; const d=new Date(ms); const z=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+function countdown(ms){ let t=Math.max(0,Math.floor(ms/60000)); const d=Math.floor(t/1440); t%=1440; const h=Math.floor(t/60), m=t%60;
+  return d?`${d}d ${h}h ${String(m).padStart(2,"0")}m`:h?`${h}h ${String(m).padStart(2,"0")}m`:`${m} min`; }
+function fxText(f){ return `<span>${f.home===false?"@":"vs"}</span><b class="riv">${esc(f.rival||"Rival")}</b>${(f.at||f.when)?`<span class="when">· ${esc(f.at?fxWhen(f.at):f.when)}</span>`:""}`; }
 function barsHtml(entries){
   if(!entries.length) return `<div class="tiny" style="padding:8px 2px">Todavía no hay jornadas publicadas.</div>`;
   const max=Math.max(1,...entries.map(e=>e.v??0));
@@ -597,7 +669,7 @@ function render(){
   if(!me()){ root.innerHTML=`<div class="auth"><div class="empty">No se encuentra la cuenta.<br><button class="btn-s" onclick="DB.auth.logout()">Salir</button></div></div>`; return; }
   const scr={jornada:jornadaScreen,clasif:clasifScreen,resultados:resultadosScreen,yo:yoScreen,admin:adminScreen}[S.tab]||jornadaScreen;
   const y=window.scrollY; root.innerHTML=scr()+navBar(); window.scrollTo(0,y);
-  soloToast();
+  soloToast(); autoClose(); if(S.tab==="jornada") loadProgress();
 }
 // Aviso una sola vez por jornada si has sido lobo solitario.
 function soloToast(){
@@ -677,6 +749,7 @@ function jornadaScreen(){
   return header(`Jornada ${J}`,open?`${done} de ${mine.length} pronosticados`:"Pronósticos cerrados")+
   `<div class="content">
     ${stateBanner()}
+    ${progressCard()}
     ${fx.length?`<div class="tiny" style="margin:-2px 2px 12px;line-height:1.5">Los pronósticos de todos se ven al cerrar la jornada. Quién gana <b style="color:var(--tx)">+${P.ganador}</b> · por cuánto <b style="color:var(--tx)">+${P.tramo}</b> · 🐺 único que acierta <b style="color:var(--tx)">x${SOLO_MULT}</b>.</div>`+fx.map(card).join("")
       :`<div class="card"><div class="empty">Todavía no están los partidos de la jornada ${J}.<br>Vuelve en unos días.</div></div>`}
   </div>`;
@@ -784,7 +857,7 @@ function openRules(){
     &nbsp;&nbsp;· 🐺 <b>Lobo solitario:</b> si eres el único que acierta el ganador de un partido, tus puntos de ese partido valen el doble<br>
     <br>
     <b>El partido de tu equipo no se pronostica.</b><br><br>
-    Los pronósticos se cierran antes del primer partido del fin de semana. Hasta entonces nadie ve lo tuyo; <b>al cerrar se ve lo que ha dicho cada uno</b>.<br><br>
+    Los pronósticos se cierran <b>solos a la hora del primer partido</b> del fin de semana (viernes o sábado). En la pantalla principal ves la cuenta atrás y cuántos te faltan. Hasta entonces nadie ve lo tuyo; <b>al cerrar se ve lo que ha dicho cada uno</b>.<br><br>
     🚫 <b>Normas sagradas:</b> a los jugadores ni una palabra, y prohibido influir en ningún partido.<br><br>
     Sin dinero: solo gloria y derecho a vacilar toda la temporada.
   </div><button class="btn-s" onclick="closeModal(1)">Cerrar</button>`,true);
@@ -805,13 +878,13 @@ function admJornada(){
   if(isOpen()){
     if(!S.adm.fx||S.adm.fx.J!==J) S.adm.fx={J,fx:clone(jd.fixtures||{})};
     const fx=S.adm.fx.fx; const n=Object.keys(fx).length;
-    return `<div class="banner g">🟢 <div><b>Jornada ${J} · pronósticos abiertos.</b> 1) Marca los partidos del finde y guárdalos. 2) Cierra antes del primer partido.</div></div>
+    return `<div class="banner g">🟢 <div><b>Jornada ${J} · pronósticos abiertos.</b> Marca los partidos del finde con su día y hora y guárdalos. Se cierra solo a la hora del primero${(()=>{const d=deadlineOf({fixtures:fx});return d?` (<b>${esc(longWhen(d))}</b>)`:"";})()}.</div></div>
       <div class="sec"><span>Partidos de la J${J}</span><span class="muted" style="text-transform:none;letter-spacing:0">${n} de ${teams.length} juegan</span></div>
       <div class="card">${teams.map(t=>{ const f=fx[t.id];
         return `<div class="fxrow"><div class="arow" style="border:none;padding:0">${tbadge(t,32)}<div class="rmain"><div class="rname" style="font-size:13px">${esc(t.name)}</div></div>
           <div class="tgl ${f?"on":""}" style="padding:0" onclick="admFxToggle('${t.id}')"><div class="box">${f?"✓":""}</div><span class="tiny">Juega</span></div></div>
-          ${f?`<div class="frow" style="margin-top:8px;gap:6px"><input class="fi" id="fx_r_${t.id}" maxlength="40" style="flex:2;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Rival" value="${esc(f.rival||"")}" onchange="S.adm.fx.fx['${t.id}'].rival=this.value.trim()">
-            <input class="fi" id="fx_w_${t.id}" style="flex:1.3;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Sáb 11:00" value="${esc(f.when||"")}" onchange="S.adm.fx.fx['${t.id}'].when=this.value.trim()">
+          ${f?`<div class="frow" style="margin-top:8px;gap:6px;flex-wrap:wrap"><input class="fi" id="fx_r_${t.id}" maxlength="40" style="flex:1 1 100%;min-width:0;font-size:14px;min-height:38px;padding:8px 10px" placeholder="Rival" value="${esc(f.rival||"")}" onchange="S.adm.fx.fx['${t.id}'].rival=this.value.trim()">
+            <input class="fi" type="datetime-local" id="fx_w_${t.id}" style="flex:1;min-width:0;font-size:14px;min-height:38px;padding:6px 8px" value="${toLocalInput(f.at)}" onchange="admFxWhen('${t.id}',this.value)">
             <button class="btn-sm ${f.home===false?"ghost":""}" style="min-width:58px" onclick="S.adm.fx.fx['${t.id}'].home=!(S.adm.fx.fx['${t.id}'].home!==false);render()">${f.home===false?"Fuera":"Casa"}</button></div>`:""}
         </div>`; }).join("")||`<div class="empty">Da de alta los equipos primero.</div>`}</div>
       <button class="btn-s" onclick="admSaveFx()">💾 Guardar partidos (se publican para pronosticar)</button>
@@ -830,8 +903,17 @@ function admJornada(){
     <button class="btn-p mt8" onclick="admPublish()">🚀 Publicar J${J} y abrir la siguiente</button>
     <button class="btn-s" onclick="admReopen()">Reabrir pronósticos sin publicar</button>`;
 }
+function admFxWhen(tid,v){ const f=S.adm.fx.fx[tid]; const ms=v?new Date(v).getTime():0;
+  if(v&&!(ms>0)) return toast("Fecha no válida",true);
+  if(ms){ f.at=ms; f.when=fxWhen(ms); } else { delete f.at; f.when=""; } render(); }
 function admFxToggle(tid){ const fx=S.adm.fx.fx; if(fx[tid]) delete fx[tid]; else fx[tid]={rival:"",when:"",home:true}; render(); }
-async function admSaveFx(){ const J=jOpen(); await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures:S.adm.fx.fx},fields:["n","status","fixtures"]}]); toast("💾 Partidos publicados para pronosticar"); }
+async function admSaveFx(){ const J=jOpen(); const fx=S.adm.fx.fx;
+  const sin=Object.keys(fx).filter(t=>!fx[t].at).map(t=>S.teams[t]?.name).filter(Boolean);
+  const dl=deadlineOf({fixtures:fx});
+  if(dl&&dl<=Date.now()) return toast("El primer partido ya ha empezado: revisa las fechas",true);
+  await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures:fx},fields:["n","status","fixtures"]},
+    {op:"set",col:"config",id:"game",data:{deadline:dl||0},merge:true}]);
+  toast(sin.length?`💾 Guardado. Sin hora: ${sin.join(", ")}`:`💾 Guardado · cierra ${longWhen(dl)}`); }
 function admRes(tid,k,raw){ const r=S.adm.draft.results[tid]=S.adm.draft.results[tid]||{}; const v=String(raw).trim();
   if(v===""){ delete r[k]; return; } const n=parseInt(v,10); if(!(n>=0&&n<250)) return toast("Marcador no válido",true); r[k]=n; }
 function admClose(){
@@ -852,8 +934,8 @@ function admPublish(){
     await DB.batch(await publishOps(d.J,Object.fromEntries(full))); S.adm.draft=null; S.adm.fx=null; toast("🚀 Jornada "+d.J+" publicada");
   });
 }
-function admReopen(){ confirmModal("Reabrir pronósticos","Cada uno podrá volver a cambiar sus pronósticos. Los marcadores metidos se conservan.","Reabrir",async()=>{
-  await admSaveDraft(); await DB.batch([{op:"set",col:"config",id:"game",data:{estado:"open"},merge:true},{op:"set",col:"jornadas",id:String(jOpen()),data:{status:"open"},merge:true}]); toast("Pronósticos reabiertos"); }); }
+function admReopen(){ confirmModal("Reabrir pronósticos","Cada uno podrá volver a cambiar sus pronósticos. Los marcadores metidos se conservan. Las horas ya pasadas se quitan, así que tendrás que cerrar a mano o poner horas nuevas.","Reabrir",async()=>{
+  await admSaveDraft(); await DB.batch([{op:"set",col:"config",id:"game",data:{estado:"open",deadline:0},merge:true},{op:"set",col:"jornadas",id:String(jOpen()),data:{status:"open",fixtures:Object.fromEntries(Object.entries(curJ()?.fixtures||{}).map(([k,f])=>{const g=Object.assign({},f); if(g.at&&g.at<=Date.now()) delete g.at; return [k,g];}))},merge:true}]); toast("Pronósticos reabiertos (sin cierre automático)"); }); }
 function admUndo(){
   const J=S.cfg.jornada;
   confirmModal("Deshacer J"+J,"Se restan los puntos de esa jornada y vuelve a quedar cerrada, con los pronósticos de entonces, para corregir los marcadores y publicar otra vez.","Deshacer",async()=>{
@@ -937,6 +1019,8 @@ async function seedDemo(){
   await DB.batch(ops);
   for(let J=1;J<=4;J++){
     const fixtures={}; ids.forEach(x=>{ if(rnd()<0.85) fixtures[x.id]={rival:rivals[Math.floor(rnd()*rivals.length)],when:(rnd()<.5?"Sáb ":"Dom ")+(9+Math.floor(rnd()*9))+":00",home:rnd()<.5}; });
+    if(J===4){ const base=new Date(); base.setDate(base.getDate()+((6-base.getDay()+7)%7||7)); base.setHours(10,0,0,0);
+      Object.values(fixtures).forEach((f,i)=>{ f.at=base.getTime()+(i%2?86400e3:0)+i*3600e3; f.when=fxWhen(f.at); }); }
     await DB.batch([{op:"set",col:"jornadas",id:String(J),data:{n:J,status:"open",fixtures}}]);
     if(J===4) break; // la J4 queda abierta para probar
     const results={}; ids.forEach(x=>{ if(!fixtures[x.id]) return; let us=48+Math.round(x.str+rnd()*26), them=44+Math.round(rnd()*26); if(us===them) us++; results[x.id]={us,them}; });

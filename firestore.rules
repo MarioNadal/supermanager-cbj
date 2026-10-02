@@ -6,7 +6,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
-    function abierto() { return get(/databases/$(database)/documents/config/game).data.estado == 'open'; }
+    function game() { return get(/databases/$(database)/documents/config/game).data; }
+    // Abierto = el admin no lo ha cerrado y no ha llegado la hora del primer partido (deadline en ms; 0 = sin hora).
+    function abierto() { return game().estado == 'open'
+      && (game().get('deadline', 0) == 0 || request.time.toMillis() < game().get('deadline', 0)); }
 
     match /config/{doc} {
       allow read: if signedIn();

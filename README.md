@@ -7,8 +7,8 @@ Cada semana el club publica los partidos del fin de semana, y cada cuenta pronos
 
 | Qué | Puntos |
 |---|---|
-| Quién gana | +2 |
-| Por cuánto (1-5 / 6-10 / 11-15 / 16+), además de acertar el ganador | +3 |
+| Quién gana | +4 |
+| Por cuánto (1-5 / 6-10 / 11-15 / 16+), además de acertar el ganador | +6 |
 | 🐺 Lobo solitario: eres el único que acierta el ganador de un partido (con 2+ pronósticos) | puntos de ese partido x2 |
 
 - **El partido de tu propio equipo no se pronostica: se anima.**
@@ -18,6 +18,10 @@ Cada semana el club publica los partidos del fin de semana, y cada cuenta pronos
 - **Insignias:** Pleno, Triple, En racha, Fiel, Podio y Ojo de halcón.
 - Sin dinero ni premios.
 
+## Pantalla principal
+- Cuenta atrás hasta el cierre (verde, ámbar con menos de 24 h, rojo con menos de 3 h) y cuántos partidos te faltan.
+- El admin ve además **quién lo tiene hecho** (completo / x de y / nada), sin ver qué ha puesto cada uno.
+
 ## Datos que se guardan
 - **De cada cuenta:** apodo (se avisa de no poner el nombre real), el equipo del club (opcional), los puntos y la casilla "soy padre, madre o tutor, o tengo su permiso".
 - **De los equipos:** solo el nombre (categoría + género) y sus marcadores.
@@ -25,8 +29,8 @@ Cada semana el club publica los partidos del fin de semana, y cada cuenta pronos
 - Los pronósticos individuales viven en `preds/{uid}` y `predsLocked/{jornada}`. Según `firestore.rules`, solo pueden leerlos su dueño y el admin.
 
 ## Flujo semanal del admin
-1. **Entre semana:** Admin → Jornada → marca qué equipos juegan, con rival, día y casa/fuera → *Guardar partidos*. A partir de ahí se pueden pronosticar.
-2. **Antes del primer partido:** *Cerrar pronósticos*.
+1. **Entre semana:** Admin → Jornada → marca qué equipos juegan, con rival, **día y hora** y casa/fuera → *Guardar partidos*. A partir de ahí se pueden pronosticar.
+2. **Cierre automático:** a la hora del primer partido (viernes o sábado) nadie puede cambiar nada (también lo impiden las reglas de Firestore). En cuanto el admin abre la app, la jornada se cierra sola y se ven los pronósticos de todos. Se puede seguir cerrando a mano con *Cerrar pronósticos*.
 3. **Después:** mete los marcadores → *Publicar*. Se puede deshacer.
 4. Clasificación → Jornada → **Compartir** copia el podio y los resultados para WhatsApp.
 5. Admin → Jugadores: cambiar apodos inadecuados o quitar cuentas (PIN olvidado → quitar y registrarse otra vez).
